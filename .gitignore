@@ -1,0 +1,2 @@
+﻿# Ignore all CSVs (raw extracts / interim files)
+*.csv
