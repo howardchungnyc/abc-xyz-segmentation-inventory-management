@@ -1,6 +1,6 @@
 # Decision Log
 ## ABC Product Segmentation & Inventory Management
-### Power BI Project: Phases 1–2 (ETL + Model Layer)
+### Power BI Project: Phases 1–2 (ETL & Model Layer)
 
 ---
 
@@ -61,7 +61,7 @@ StartDate = Date.StartOfYear(Date.AddYears(MinDate, -1))
 EndDate = Date.EndOfYear(Date.AddYears(MaxDate, 1))
 ```
 
-**Source Data Range:** Jan 6, 2015 → Jan 31, 2018<br>
+**Source Data Range:** Jan 1, 2015 → Jan 31, 2018<br>
 **Generated Range:** Jan 1, 2014 → Dec 31, 2019<br>
 **Total Rows:** 2,191 contiguous daily dates
 
@@ -155,7 +155,7 @@ Without a fixed column order, query outputs become inconsistent, harder to scan,
 - Grouped business attributes after key fields for faster validation and troubleshooting
 - Kept derived and analytical fields at the end to preserve readability during ETL review
 
-**Note:** `FactOrders` primary key at line-item grain is `Order Line Id`, not `Order Id` (documented in Entry #12).
+**Note:** `FactOrders` primary key at line-item grain is `Order Line Id`, not `Order Id` (documented in Entry #13).
 
 ---
 
@@ -256,7 +256,20 @@ Custom hierarchies match calendar attributes and sort keys, so drill-down order 
 
 ---
 
-## Entry #12 - FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization
+## Entry #12 - Shared DimDate: Order Date vs. Shipping Date (dual relationships)
+
+**Date:** March 2026<br>
+**Layer:** Model - `FactOrders` ↔ `DimDate` (role-playing dates)
+
+**Decision:**
+**Order Date** and **Shipping Date** both use the same calendar table (`DimDate`). **Order Date** is the active relationship for most time intelligence analysis. **Shipping Date** is inactive so the model keeps a single default timeline; analysis on the shipment calendar uses **`USERELATIONSHIP`** in DAX when needed.
+
+**Rationale:**
+**Order Date** answers demand questions - when customers buy, revenue trends, seasonal patterns. **Shipping Date** answers fulfillment questions - how long orders take to ship, whether late deliveries cluster by period, where the operation is falling behind. Keeping both on the same calendar table enables either view to use identical date filters, hierarchies, and time intelligence without building a second calendar.
+
+---
+
+## Entry #13 - FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization
 
 **Date:** March 2026<br>
 **Layer:** Model - `FactOrders`; documentation: `column-definition.md`, MasterSet source notes
@@ -286,7 +299,7 @@ That two-grain fact pattern is standard in enterprise-scale order domains (e.g. 
 
 ---
 
-## Entry #13 - Model Validation Suite
+## Entry #14 - Model Validation Suite
 
 **Date:** March 2026<br>
 **Layer:** DAX measures: `FactOrders` → **`_Validation`** display folder
@@ -370,7 +383,7 @@ COUNTROWS (
 
 ---
 
-## Entry #14 - Model Validation Page Preserved
+## Entry #15 - Model Validation Page Preserved
 
 **Date:** March 2026<br>
 **Layer:** Report Page - **Model Validation**
@@ -381,7 +394,7 @@ Keep the Model Validation report page in the shipped `.pbix` after all validatio
 **Rationale:**
 The page is a reference for anyone opening the file later: it shows what was tested and the outcomes without hunting through the measures list.
 
-**Note:** Measure definitions and the `_Validation` folder are documented under Entry #13.
+**Note:** Measure definitions and the `_Validation` folder are documented under **Entry #14**.
 
 ---
 
@@ -397,5 +410,5 @@ The page is a reference for anyone opening the file later: it shows what was tes
 
 ---
 
-*Document Version: 2.1 - Phase 1 ETL + Phase 2 Model Layer; FactOrders (decision-log entry 12); limitation log row two COGS / sales - gross profit correction*<br>
+*Document Version: 2.2 - Phase 1 ETL & Phase 2 Model Layer; FactOrders (decision-log Entry #13); DimDate (dual dates Entry #12); limitation log row two COGS / sales - gross profit correction*<br>
 *Next Update: Phase 3 - DAX Measures Layer*
