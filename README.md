@@ -70,7 +70,12 @@ ABC inventory classification is one of the most fundamental tools in supply chai
 
 ## Data Model Architecture
 
-Star schema with one main transaction (fact) table (`FactOrders`, 180,519 rows) and three lookup (dimension) tables (`DimProduct`, `DimCustomer`, `DimDate`). **Phase 2** finalized model relationships (many-to-one, single direction), **Order Date** active and **Shipping Date** inactive to `DimDate`, **Sort by column** on calendar labels, hidden keys where appropriate, **display folders** on `FactOrders`, Power Query **query groups**, `DimDate` **hierarchies**, and a **model validation** measure suite documented in **`decision-log.md`**.
+Star schema: one fact table (`FactOrders`, 180,519 rows at line-item grain) 
+and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`). 
+`Order Date` is the active date relationship; `Shipping Date` inactive 
+(activated via `USERELATIONSHIP` in DAX).
+
+→ Full architectural decisions and rationale: [`decision-log.md`](./decision-log.md)
 
 ### Shared `DimDate` calendar: Order Date vs. Shipping Date
 
@@ -98,26 +103,27 @@ Star schema with one main transaction (fact) table (`FactOrders`, 180,519 rows) 
 
 ## Key Architectural Decisions
 
-See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase 2 (model layer)**—**Document Version 2.0**, Entries #1–#13. Summary:
+See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase 2 (model layer)**. **Document Version 2.1**, Entries #1–#14. Summary:
 
 **Phase 1 (ETL)**
 
-1. **Single source staging table (MasterSet)** — single CSV load; all queries reference one table; staging not loaded to the model  
-2. **Auto-updating date table (Dynamic DimDate)** — range from source min/max with 1-year padding  
-3. **Dynamic Late Delivery Risk** — replaced the pre-labeled source risk flag (ML target) with Lead Time Variance > 0  
-4. **Two late-risk columns** — integer (0/1) for DAX; logical (True/False) for visuals  
-5. **Consistent column ordering** — PK → FKs → date keys → attributes → measures → calculated fields  
+1. **Single source staging table (MasterSet)**: single CSV load; all queries reference one table; staging not loaded to the model  
+2. **Auto-updating date table (Dynamic DimDate)**: range from source min/max with 1-year padding  
+3. **Dynamic Late Delivery Risk**: replaced the pre-labeled source risk flag (ML target) with Lead Time Variance > 0  
+4. **Two late-risk columns**: integer (0/1) for DAX; logical (True/False) for visuals  
+5. **Consistent column ordering**: PK → FKs → date keys → attributes → measures → calculated fields  
 
 **Phase 2 (model layer)**
 
-6. **Sort by column on `DimDate` labels** — chronological order in visuals (paired with Phase 1 sort-key columns)  
-7. **Hidden keys / internal columns** — surrogate and foreign keys hidden from report view where appropriate  
-8. **Default summarization** — Don’t summarize on non-additive fields; explicit DAX in Phase 3  
-9. **Display folders on `FactOrders`** — navigable field list for measure authoring  
-10. **Power Query groups** — `_Staging`, `Facts`, `Dimensions`  
-11. **Date hierarchies on `DimDate`** — explicit drill paths (Year–Month–Day; Year–Quarter–Month)  
-12. **Model validation suite** — DAX tests for row count, date range, and dimension integrity (`_Validation` folder)  
-13. **Model Validation page kept in `.pbix`** — reference for what was tested and outcomes  
+6. **Sort by column on `DimDate` labels**: chronological order in visuals (paired with Phase 1 sort-key columns)  
+7. **Hidden keys / internal columns**: surrogate and foreign keys hidden from report view where appropriate  
+8. **Default summarization**: Don’t summarize on non-additive fields; explicit DAX in Phase 3  
+9. **Display folders on `FactOrders`**: navigable field list for measure authoring  
+10. **Power Query groups**: `_Staging`, `Facts`, `Dimensions`  
+11. **Date hierarchies on `DimDate`**: explicit drill paths (Year–Month–Day; Year–Quarter–Month)  
+12. **FactOrders grain, PK, and order-header denormalization**: line-item PK (`Order Line Id`); collapsed fact vs. header/line split; degenerate `Order Id`; when to refactor (`decision-log.md` Entry #12)  
+13. **Model validation suite**: DAX tests for row count, date range, and dimension integrity (`_Validation` folder)  
+14. **Model validation page**: `.pbix` reference for what was tested and outcomes  
 
 ---
 
@@ -126,7 +132,7 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 | Phase | Status | Development & Milestone (dev branch → PBIX GitHub Release) |
 |---|---|---|
 | Phase 1 - ETL Data Preparation Layer | ✅ Complete | Developed on [`etl-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/etl-layer). PBIX: [Phase 1 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer). |
-| Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 - Model Layer](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
+| Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
 | Phase 3 - DAX Layer | 🔄 In Progress | Develop on `dax-layer` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
 | Phase 4 - Page 1 Visuals | ⬜ Pending | Develop on `page-1-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
 | Phase 5 - Page 2 Visuals | ⬜ Pending | Develop on `page-2-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
@@ -140,7 +146,7 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 | File | Description |
 |---|---|
 | `README.md` | Project summary, report structure, download links, and business purpose |
-| `decision-log.md` | Architectural and analytical decisions with reasoning — Phases 1–2 (ETL + model layer), Document Version 2.0 |
+| `decision-log.md` | Architectural and analytical decisions with reasoning: Phases 1–2 (ETL + model layer), Document Version 2.1 |
 | `column-definition.md` | Complete data dictionary — source to model column mapping |
 
 ---
