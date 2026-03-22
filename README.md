@@ -77,10 +77,6 @@ and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`).
 
 → Full architectural decisions and rationale: [`decision-log.md`](./decision-log.md)
 
-### Shared `DimDate` calendar: Order Date vs. Shipping Date
-
-**Order Date** and **Shipping Date** both use the same calendar table (`DimDate`). **Order Date** is the primary filter for most time intelligence analysis. **Shipping Date** is the secondary timeline, so you can run the same **order-line** analysis (revenue, volume, margin, fulfillment, late-delivery risk, and other fact-table measures) on either the **Order Date** calendar or the **Shipping Date** calendar (the latter via `USERELATIONSHIP` in DAX when needed).
-
 ### Model Relationships (Star Schema)
 
 ![Relationship view: one-to-many from dimensions to FactOrders; dual date roles on Order Date and Shipping Date](./assets/star-schema-relationships.png)
@@ -103,15 +99,15 @@ and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`).
 
 ## Key Architectural Decisions
 
-See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase 2 (model layer)**. **Document Version 2.1**, Entries #1–#14. Summary:
+See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase 2 (model layer)**. **Document Version 2.2**, Entries #1–#15. Summary:
 
 **Phase 1 (ETL)**
 
-1. **Single source staging table (MasterSet)**: single CSV load; all queries reference one table; staging not loaded to the model  
-2. **Auto-updating date table (Dynamic DimDate)**: range from source min/max with 1-year padding  
-3. **Dynamic Late Delivery Risk**: replaced the pre-labeled source risk flag (ML target) with Lead Time Variance > 0  
+1. **Single source staging table (`MasterSet`)**: single CSV load; all queries reference one table; staging not loaded to the model  
+2. **Auto-updating date table (Dynamic `DimDate`)**: range from source min/max with 1-year padding  
+3. **Dynamic Late Delivery Risk**: replaced the source risk flag—a pre-labeled machine learning field, not calculated from actual shipping data—with Lead Time Variance > 0  
 4. **Two late-risk columns**: integer (0/1) for DAX; logical (True/False) for visuals  
-5. **Consistent column ordering**: PK → FKs → date keys → attributes → measures → calculated fields  
+5. **Consistent column ordering**: Primary Key → Foreign Keys → date keys → attributes → measures → calculated fields  
 
 **Phase 2 (model layer)**
 
@@ -121,9 +117,10 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 9. **Display folders on `FactOrders`**: navigable field list for measure authoring  
 10. **Power Query groups**: `_Staging`, `Facts`, `Dimensions`  
 11. **Date hierarchies on `DimDate`**: explicit drill paths (Year–Month–Day; Year–Quarter–Month)  
-12. **FactOrders grain, PK, and order-header denormalization**: line-item PK (`Order Line Id`); collapsed fact vs. header/line split; degenerate `Order Id`; when to refactor (`decision-log.md` Entry #12)  
-13. **Model validation suite**: DAX tests for row count, date range, and dimension integrity (`_Validation` folder)  
-14. **Model validation page**: `.pbix` reference for what was tested and outcomes  
+12. **Shared `DimDate` - Order Date vs. Shipping Date**: **Order Date** (demand) and **Shipping Date** (fulfillment) share one calendar on `FactOrders`. Shipment-timeline analysis via `USERELATIONSHIP` in DAX  
+13. **FactOrders grain and primary key**: one row per order line item. Primary Key is `Order Line Id`, not `Order Id`. Order header attributes retained in single fact table. No header level measures in source data to justify a split  
+14. **Model validation suite**: DAX tests for row count, date range, and dimension integrity (`_Validation` folder)
+15. **Model validation page**: `.pbix` reference for what was tested and outcomes
 
 ---
 
@@ -133,11 +130,11 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 |---|---|---|
 | Phase 1 - ETL Data Preparation Layer | ✅ Complete | Developed on [`etl-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/etl-layer). PBIX: [Phase 1 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer). |
 | Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
-| Phase 3 - DAX Layer | 🔄 In Progress | Develop on `dax-layer` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
-| Phase 4 - Page 1 Visuals | ⬜ Pending | Develop on `page-1-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
-| Phase 5 - Page 2 Visuals | ⬜ Pending | Develop on `page-2-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
-| Phase 6 - Page 3 Visuals | ⬜ Pending | Develop on `page-3-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
-| Phase 7 - v1.0 Complete | ⬜ Pending | Finalize on `release/v1.0`. Publish the PBIX snapshot as a GitHub Release; update `main` with final docs for the portfolio. |
+| Phase 3 - DAX Measures Layer | 🔄 In Progress | Develop on `dax-layer` (branch for development only). When complete, PBIX published as GitHub Release. |
+| Phase 4 - Page 1 Visuals | ⬜ Pending | Develop on `page-1-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
+| Phase 5 - Page 2 Visuals | ⬜ Pending | Develop on `page-2-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
+| Phase 6 - Page 3 Visuals | ⬜ Pending | Develop on `page-3-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
+| Phase 7 - v1.0 Complete | ⬜ Pending | Merge and finalize on `release/v1.0`. Final .pbix published as GitHub Release. `main` updated with completed docs for portfolio publication. |
 
 ---
 
@@ -146,7 +143,7 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 | File | Description |
 |---|---|
 | `README.md` | Project summary, report structure, download links, and business purpose |
-| `decision-log.md` | Architectural and analytical decisions with reasoning: Phases 1–2 (ETL + model layer), Document Version 2.1 |
+| `decision-log.md` | Architectural and analytical decisions with reasoning: Phases 1–2 (ETL + model layer), Document Version 2.2 |
 | `column-definition.md` | Complete data dictionary — source to model column mapping |
 
 ---

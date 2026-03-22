@@ -173,18 +173,18 @@
 
 ---
 
-## FactOrders - 35 Columns
+## FactOrders - 34 Columns
 
 **Source:** Reference query from MasterSet<br>
 **Grain:** One row per order line item<br>
 **Primary Key (PK):** **`Order Line Id`**<br>
-**Foreign Key (FK):** `Order Date` → `DimDate`, `Product Card Id` → `DimProduct`, `Customer Id` → `DimCustomer`
+**Foreign Key (FK):** `Order Date` → `DimDate`, `Shipping Date` → `DimDate` (inactive relationship), `Product Card Id` → `DimProduct`, `Customer Id` → `DimCustomer`
 
 ### Keys
 
 | Column | Data Type | Source Column | Renamed? | Notes |
 |---|---|---|---|---|
-| Order Line Id | Whole Number | Order Item Id | YES | PK -  unique per row (one line item) at fact grain |
+| Order Line Id | Whole Number | Order Item Id | YES | PK - unique per row (one line item) at fact grain |
 | Order Id | Whole Number | Order Id | No | Order-level grouping key, not unique at line-item grain (degenerate dimension) |
 | Customer Id | Whole Number | Customer Id | No | FK → DimCustomer |
 | Product Card Id | Whole Number | Product Card Id | No | FK → DimProduct |
@@ -274,5 +274,5 @@
 
 ---
 
-*Document Version: 1.1 — Phase 1 ETL + Phase 2 Model Layer; FactOrders PK `Order Line Id` at line grain (see `decision-log.md` v2.1, entry 12)*<br>
+*Document Version: 1.1 — Phase 1 ETL & Phase 2 Model Layer; FactOrders PK `Order Line Id` at line grain (see `decision-log.md` v2.2, entry 13)*<br>
 *Next Update: Phase 3 - DAX Measures Layer*
