@@ -98,7 +98,7 @@ Star schema with one main transaction (fact) table (`FactOrders`, 180,519 rows) 
 
 ## Key Architectural Decisions
 
-See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase 2 (model layer)**—**Document Version 2.0**, Entries #1–#13. Summary:
+See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase 2 (model layer)**. **Document Version 2.1**, Entries #1–#14. Summary:
 
 **Phase 1 (ETL)**
 
@@ -116,8 +116,9 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 9. **Display folders on `FactOrders`** — navigable field list for measure authoring  
 10. **Power Query groups** — `_Staging`, `Facts`, `Dimensions`  
 11. **Date hierarchies on `DimDate`** — explicit drill paths (Year–Month–Day; Year–Quarter–Month)  
-12. **Model validation suite** — DAX tests for row count, date range, and dimension integrity (`_Validation` folder)  
-13. **Model Validation page kept in `.pbix`** — reference for what was tested and outcomes  
+12. **FactOrders grain, PK, and order-header denormalization** — line-item PK (`Order Line Id`); collapsed fact vs. header/line split; degenerate `Order Id`; when to refactor (`decision-log.md` Entry #12)  
+13. **Model validation suite** — DAX tests for row count, date range, and dimension integrity (`_Validation` folder)  
+14. **Model Validation page kept in `.pbix`** — reference for what was tested and outcomes  
 
 ---
 
@@ -126,7 +127,7 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 | Phase | Status | Development & Milestone (dev branch → PBIX GitHub Release) |
 |---|---|---|
 | Phase 1 - ETL Data Preparation Layer | ✅ Complete | Developed on [`etl-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/etl-layer). PBIX: [Phase 1 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer). |
-| Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 - Model Layer](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
+| Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
 | Phase 3 - DAX Layer | 🔄 In Progress | Develop on `dax-layer` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
 | Phase 4 - Page 1 Visuals | ⬜ Pending | Develop on `page-1-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
 | Phase 5 - Page 2 Visuals | ⬜ Pending | Develop on `page-2-visuals` (branch is for development only). When complete, publish the PBIX snapshot as a GitHub Release. |
@@ -140,7 +141,7 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 | File | Description |
 |---|---|
 | `README.md` | Project summary, report structure, download links, and business purpose |
-| `decision-log.md` | Architectural and analytical decisions with reasoning — Phases 1–2 (ETL + model layer), Document Version 2.0 |
+| `decision-log.md` | Architectural and analytical decisions with reasoning — Phases 1–2 (ETL + model layer), Document Version 2.1 |
 | `column-definition.md` | Complete data dictionary — source to model column mapping |
 
 ---

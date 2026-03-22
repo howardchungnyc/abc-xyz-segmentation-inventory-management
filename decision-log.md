@@ -155,6 +155,8 @@ Without a fixed column order, query outputs become inconsistent, harder to scan,
 - Grouped business attributes after key fields for faster validation and troubleshooting
 - Kept derived and analytical fields at the end to preserve readability during ETL review
 
+**Note:** the primary key at **line-item** grain is **`Order Line Id`**, not **`Order Id`** (documented in **Entry #12**).
+
 ---
 
 ## Phase 2 — Model Layer (Semantic Model)
@@ -254,7 +256,37 @@ Custom hierarchies match calendar attributes and sort keys, so drill-down order 
 
 ---
 
-## Entry #12 — Model Validation Suite
+## Entry #12 — FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization
+
+**Date:** March 2026<br>
+**Layer:** Model — `FactOrders`; documentation — `column-definition.md`, MasterSet source notes
+
+**Observation #1 (FactOrders Primary Key):** `FactOrders` operates at line-item grain: 180,519 rows and 65,752 distinct **`Order Id`** values (~2.75 line items per order on average).
+
+**Decision #1:** At this grain the primary key is **`Order Line Id`** (**DataCo** source **`Order Item Id`**). **`Order Id`** is the order-level natural key, it repeats across line items on the same order, is **not** unique at line-item grain, and must **not** be documented as the fact PK.
+
+**Degenerate dimension:** **`Order Id`** stays on **`FactOrders`** as a **degenerate dimension** — the business order identifier carried on the fact without a separate **`DimOrder`** table. That matches common Kimball usage when the source does not justify a full order dimension and the id is mainly for grouping or drill-through, not as the line-level PK.
+
+**Documentation updates:** `column-definition.md`: FactOrders **Keys** and MasterSet **Order Id** notes (PK/grain + degenerate dimension wording).
+
+**Observation #2 (Order-header denormalization):** Because the fact is at line grain, order-header attributes (e.g. **Market**, **Order Status**, **Order Region**, **Order City**, **Order Country**, **Payment Type**) repeat on every row that shares the same **`Order Id`**.
+
+**Architectural options considered:** A more fully separated warehouse shape would use two structures:
+
+- **`FactOrderHeader`** — one row per **`Order Id`**, holding order-level attributes (and, in richer sources, header-only measures).
+- **`FactOrderLines`** — one row per line item, with **`Order Id`** as a foreign key to the header.
+
+That **two-grain fact** pattern is standard in enterprise-scale order domains (e.g. large order-management systems) when both header-level and line-level metrics are substantial and need independent, correct aggregation paths.
+
+**Decision #2:** Retain the collapsed single fact for this project. The **DataCo** dataset does **not** expose order-header-level measures (e.g. no order-level shipping cost, tax, or fee) that would create aggregation conflicts when line-item measures are summed. Without header-level facts, splitting adds join complexity with no analytical return for this reporting scope.
+
+**Trade-offs considered:** Order-header attributes repeat **N times** per order (N = line count on that order). Measures that use these columns as filter context (e.g. revenue by **Market**) still aggregate correctly because additive facts (**Sales**, **Order Gross Profit**, etc.) are defined at line-item grain and sum as intended. No double-counting arises under the current measure design provided order-level monetary facts are not introduced later without an explicit allocation or header fact.
+
+**What would trigger a schema change:** Extending the model with order-level costs (e.g. freight, handling, taxes) that must be allocated across lines, or any header metric that would fan out and multiply if joined naïvely to line grain, would justify **`FactOrderHeader`** (or an equivalent pattern) to keep aggregations correct.
+
+---
+
+## Entry #13 — Model Validation Suite
 
 **Date:** March 2026<br>
 **Layer:** DAX measures — `FactOrders` → **`_Validation`** display folder
@@ -338,7 +370,7 @@ COUNTROWS (
 
 ---
 
-## Entry #13 — Model Validation Page Preserved
+## Entry #14 — Model Validation Page Preserved
 
 **Date:** March 2026<br>
 **Layer:** Report — page **“Model Validation”**
@@ -349,7 +381,7 @@ Keep the **Model Validation** report page in the shipped `.pbix` after all valid
 **Rationale:**
 The page is a **reference** for anyone opening the file later: it shows **what was tested** and **the outcomes** without hunting through the measures list.
 
-**Note:** Measure definitions and the `_Validation` folder are documented under **Entry #12**.
+**Note:** Measure definitions and the `_Validation` folder are documented under **Entry #13**.
 
 ---
 
@@ -365,5 +397,5 @@ The page is a **reference** for anyone opening the file later: it shows **what w
 
 ---
 
-*Document Version: 2.0 - Phase 1 ETL & Phase 2 Model Layer Complete*<br>
+*Document Version: 2.1 - Phase 1 ETL + Phase 2 Model Layer + FactOrders grain / PK / header denormalization (Entry #12)*<br>
 *Next Update: Phase 3 - DAX Measures Layer*
