@@ -1,6 +1,6 @@
 # Column Definitions
 ## ABC Product Segmentation & Inventory Management
-### Power BI Project - Phase 1: ETL Data Preparation Layer
+### Power BI Project: Phase 1 (ETL) & Phase 2 (Model Layer)
 
 ---
 
@@ -51,7 +51,7 @@
 | 27 | Order Country | Text | Destination country |
 | 28 | Order Customer Id | Whole Number | Duplicate of Customer Id |
 | 29 | order date (DateOrders) | DateTime | Order placement date and time |
-| 30 | Order Id | Whole Number | Order primary key |
+| 30 | Order Id | Whole Number | Order header identifier - repeats across line items in the same order at line-item grain |
 | 31 | Order Item Cardprod Id | Whole Number | RFID product scan code |
 | 32 | Order Item Discount | Decimal Number | Discount amount per order item |
 | 33 | Order Item Discount Rate | Decimal Number | Discount rate - ratio 0-1 |
@@ -177,14 +177,15 @@
 
 **Source:** Reference query from MasterSet<br>
 **Grain:** One row per order line item<br>
-**Primary Key (PK):** Order Id<br>
+**Primary Key (PK):** **`Order Line Id`**<br>
 **Foreign Key (FK):** `Order Date` → `DimDate`, `Product Card Id` → `DimProduct`, `Customer Id` → `DimCustomer`
 
 ### Keys
 
 | Column | Data Type | Source Column | Renamed? | Notes |
 |---|---|---|---|---|
-| Order Id | Whole Number | Order Id | No | PK |
+| Order Line Id | Whole Number | Order Item Id | YES | PK -  unique per row (one line item) at fact grain |
+| Order Id | Whole Number | Order Id | No | Order-level grouping key, not unique at line-item grain (degenerate dimension) |
 | Customer Id | Whole Number | Customer Id | No | FK → DimCustomer |
 | Product Card Id | Whole Number | Product Card Id | No | FK → DimProduct |
 | Product Card Id (RFID) | Whole Number | Order Item Cardprod Id | YES | RFID reader scan code - secondary product reference |
@@ -198,8 +199,8 @@
 |---|---|---|---|---|
 | Order Status | Text | Order Status | No | COMPLETE, PENDING, CLOSED, CANCELED, PROCESSING, etc. |
 | Delivery Status | Text | Delivery Status | No | Advance shipping, Late delivery, On time, Canceled |
-| Late Delivery Risk | Whole Number | Late_delivery_risk | YES | **Derived** - replaced ML target variable. 1 if Lead Time Variance > 0 |
-| Is Late Delivery Risk | Logical | Late_delivery_risk | YES | **Derived** - True/False companion for report visuals |
+| Late Delivery Risk | Whole Number | Late_delivery_risk | YES | Derived - replaced ML target variable. 1 if Lead Time Variance > 0 |
+| Is Late Delivery Risk | Logical | Late_delivery_risk | YES | Derived - True/False companion for report visuals |
 | Payment Type | Text | Type | YES | DEBIT, TRANSFER, CASH, PAYMENT |
 | Market | Text | Market | No | Africa, Europe, LATAM, Pacific Asia, USCA |
 | Order Region | Text | Order Region | No | Geographic sub-region |
@@ -213,7 +214,6 @@
 
 | Column | Data Type | Source Column | Renamed? | Notes |
 |---|---|---|---|---|
-| Order Line Id | Whole Number | Order Item Id | YES | Order line item identifier |
 | Discount Rate | Decimal Number | Order Item Discount Rate | YES | Ratio 0-1 - kept as Decimal not Currency |
 | Shipping Mode | Text | Shipping Mode | No | Standard Class, First Class, Second Class, Same Day |
 
@@ -274,5 +274,5 @@
 
 ---
 
-*Document Version: 1.0 - Phase 1 ETL Complete*<br>
-*Next Update: Phase 2 - Model Layer (Relationships + DAX)*
+*Document Version: 1.1 — Phase 1 ETL + Phase 2 Model Layer; FactOrders PK `Order Line Id` at line grain (see `decision-log.md` v2.1, entry 12)*<br>
+*Next Update: Phase 3 - DAX Measures Layer*

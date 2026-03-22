@@ -1,6 +1,6 @@
 # Decision Log
 ## ABC Product Segmentation & Inventory Management
-### Power BI Project — Phases 1–2 (ETL + Model Layer)
+### Power BI Project: Phases 1–2 (ETL + Model Layer)
 
 ---
 
@@ -10,7 +10,7 @@
 
 ## Phase 1 — ETL Data Preparation Layer
 
-## Entry #1 — Single Source Data Staging (MasterSet)
+## Entry #1 - Single Source Data Staging (MasterSet)
 
 **Date:** March 2026<br>
 **Layer:** Power Query `MasterSet`
@@ -45,7 +45,7 @@ CSV Source
 
 ---
 
-## Entry #2 — Auto-Updating DimDate Table with 1-Year Buffer
+## Entry #2 - Auto-Updating DimDate Table with 1-Year Buffer
 
 **Date:** March 2026<br>
 **Layer:** Power Query `DimDate`
@@ -61,8 +61,8 @@ StartDate = Date.StartOfYear(Date.AddYears(MinDate, -1))
 EndDate = Date.EndOfYear(Date.AddYears(MaxDate, 1))
 ```
 
-**Source Data Range:** Jan 6, 2015 → Jan 31, 2018
-**Generated Range:** Jan 1, 2014 → Dec 31, 2019
+**Source Data Range:** Jan 6, 2015 → Jan 31, 2018<br>
+**Generated Range:** Jan 1, 2014 → Dec 31, 2019<br>
 **Total Rows:** 2,191 contiguous daily dates
 
 **Benefits:**
@@ -72,7 +72,7 @@ EndDate = Date.EndOfYear(Date.AddYears(MaxDate, 1))
 
 ---
 
-## Entry #3 — Dynamic Late Delivery Risk Rule
+## Entry #3 - Dynamic Late Delivery Risk Rule
 
 **Date:** March 2026<br>
 **Layer:** Power Query `FactOrders`
@@ -103,7 +103,7 @@ Is Late Delivery Risk = [Lead Time Variance] > 0
 
 ---
 
-## Entry #4 — Two Late-Risk Fields for Different Uses
+## Entry #4 - Two Late-Risk Fields for Different Uses
 
 **Date:** March 2026<br>
 **Layer:** Power Query `FactOrders`
@@ -138,7 +138,7 @@ Late Orders = CALCULATE(COUNTROWS(FactOrders), FactOrders[Is Late Delivery Risk]
 
 ---
 
-## Entry #5 — Consistent Column Ordering Standard
+## Entry #5 - Consistent Column Ordering Standard
 
 **Date:** March 2026<br>
 **Layer:** Power Query (`DimProduct`, `DimCustomer`, `FactOrders`)
@@ -155,17 +155,19 @@ Without a fixed column order, query outputs become inconsistent, harder to scan,
 - Grouped business attributes after key fields for faster validation and troubleshooting
 - Kept derived and analytical fields at the end to preserve readability during ETL review
 
+**Note:** `FactOrders` primary key at line-item grain is `Order Line Id`, not `Order Id` (documented in Entry #12).
+
 ---
 
 ## Phase 2 — Model Layer (Semantic Model)
 
-## Entry #6 — Sort By Column Assignments
+## Entry #6 - Sort By Column Assignments
 
 **Date:** March 2026<br>
-**Layer:** Model properties — `DimDate`
+**Layer:** Model properties - `DimDate`
 
 **Decision:**
-In the **model**, set **Sort by column** on `DimDate` text labels so charts and slicers follow calendar order, not A–Z.
+Set **Sort by column** on `DimDate` text labels so charts and slicers follow calendar order, not A–Z.
 
 **Assignments:**
 - `Month Name` → `Month Number`
@@ -174,17 +176,17 @@ In the **model**, set **Sort by column** on `DimDate` text labels so charts and 
 - `Year-Month Label` → `Year-Month Key`
 
 **Note:**
-Power Query already produced the correct **data** (label column plus matching sort key in the same table). Phase 2 was the step where the **report model** was wired so each label **depends on** its numeric/key column for sorting.
+Power Query already produced the correct data (label column plus matching sort key in the same table). Phase 2 was the step where the report model was wired so each label depends on its numeric/key column for sorting.
 
 **Rationale:**
 Power BI’s default sort for text is alphabetical. Month names like “Apr” and “Jan” sort wrong alphabetically. Calendar labels require an explicit numeric or key sort column for correct axis and slicer behavior. Sort by column tells the product which column defines the intended order.
 
 ---
 
-## Entry #7 — Hidden Columns
+## Entry #7 - Hidden Columns
 
 **Date:** March 2026<br>
-**Layer:** Model — all loaded tables
+**Layer:** Model - all loaded tables
 
 **Decision:**
 Hide surrogate keys, foreign keys, and DAX-only columns from **report view** across `FactOrders`, `DimDate`, `DimProduct`, and `DimCustomer`.
@@ -195,10 +197,10 @@ Hiding these fields keeps day-to-day reporting focused on names, dates, and meas
 
 ---
 
-## Entry #8 — Default Summarization
+## Entry #8 - Default Summarization
 
 **Date:** March 2026<br>
-**Layer:** Model — `FactOrders` (and related columns as applicable)
+**Layer:** Model - `FactOrders` (and related columns as applicable)
 
 **Decision:**
 Set **Don’t summarize** on ID columns, date keys, geographic coordinates, and ratio/rate columns where **Sum** is semantically wrong.
@@ -210,10 +212,10 @@ Prevents implicit aggregation mistakes. Phase 3 DAX measures will own intentiona
 
 ---
 
-## Entry #9 — Display Folders on FactOrders
+## Entry #9 - Display Folders on FactOrders
 
 **Date:** March 2026<br>
-**Layer:** Model — `FactOrders`
+**Layer:** Model - `FactOrders`
 
 **Decision:**
 Organize `FactOrders` columns into seven display folders: **Keys**, **Dates**, **Financial**, **Rates & Ratios**, **Order Details**, **Shipping & Logistics**, **Delivery Risk**.
@@ -223,10 +225,10 @@ Improves field-list navigation during Phase 3 DAX measure authoring.
 
 ---
 
-## Entry #10 — Power Query Groups
+## Entry #10 - Power Query Groups
 
 **Date:** March 2026<br>
-**Layer:** Power Query Editor — query organization
+**Layer:** Power Query Editor
 
 **Decision:**
 Group queries into **\_Staging** (`MasterSet`), **Facts** (`FactOrders`), and **Dimensions** (`DimDate`, `DimProduct`, `DimCustomer`).
@@ -239,13 +241,13 @@ When you create named groups, Power BI sometimes leaves a default **Other Querie
 
 ---
 
-## Entry #11 — Date Hierarchies on DimDate
+## Entry #11 - Date Hierarchies on DimDate
 
 **Date:** March 2026<br>
-**Layer:** Model — `DimDate`
+**Layer:** Model - `DimDate`
 
 **Decision:**
-Create two **explicit** hierarchies on `DimDate`:
+Create two explicit hierarchies on `DimDate`:
 - **Year–Month–Day:** `Year` → `Month Name` → `Day Name`
 - **Year–Qtr–Month:** `Year` → `Quarter Label` → `Month Name`
 
@@ -254,18 +256,48 @@ Custom hierarchies match calendar attributes and sort keys, so drill-down order 
 
 ---
 
-## Entry #12 — Model Validation Suite
+## Entry #12 - FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization
 
 **Date:** March 2026<br>
-**Layer:** DAX measures — `FactOrders` → **`_Validation`** display folder
+**Layer:** Model - `FactOrders`; documentation: `column-definition.md`, MasterSet source notes
+
+**Observation #1 (FactOrders Primary Key):** `FactOrders` operates at line-item grain: 180,519 rows and 65,752 distinct **`Order Id`** values (~2.75 line items per order on average).
+
+**Decision #1:** At this grain the primary key is **`Order Line Id`** (**DataCo** source **`Order Item Id`**). **`Order Id`** is the order-level natural key, it repeats across line items on the same order, is **not** unique at line-item grain, and must **not** be documented as the fact PK.
+
+**Degenerate Dimension:** **`Order Id`** stays on **`FactOrders`** as a **degenerate dimension** — the business order identifier carried on the fact without a separate **`DimOrder`** table. That matches common Kimball usage when the source does not justify a full order dimension and the id is mainly for grouping or drill-through, not as the line-level PK.
+
+**Documentation Updates:** `column-definition.md`: FactOrders **Keys** and MasterSet **Order Id** notes (PK/grain + degenerate dimension wording).
+
+**Observation #2 (Order Header Denormalization):** Because the fact is at line grain, order-header attributes (e.g. **Market**, **Order Status**, **Order Region**, **Order City**, **Order Country**, **Payment Type**) repeat on every row that shares the same **`Order Id`**.
+
+**Architectural Options Considered:** A more fully separated warehouse shape would use two structures:
+
+- **`FactOrderHeader`** — one row per **`Order Id`**, holding order-level attributes (and, in richer sources, header-only measures).
+- **`FactOrderLines`** — one row per line item, with **`Order Id`** as a foreign key to the header.
+
+That two-grain fact pattern is standard in enterprise-scale order domains (e.g. large order-management systems) when both header-level and line-level metrics are substantial and need independent, correct aggregation paths.
+
+**Decision #2:** Retain the collapsed single fact for this project. The **DataCo** dataset does **not** expose order-header-level measures (e.g. no order-level shipping cost, tax, or fee) that would create aggregation conflicts when line-item measures are summed. Without header-level facts, splitting adds join complexity with no analytical return for this reporting scope.
+
+**Trade-offs Considered:** Order-header attributes repeat **N times** per order (N = line count on that order). Measures that use these columns as filter context (e.g. revenue by **Market**) still aggregate correctly because additive facts (**Sales**, **Order Gross Profit**, etc.) are defined at line-item grain and sum as intended. No double-counting arises under the current measure design provided order-level monetary facts are not introduced later without an explicit allocation or header fact.
+
+**What Triggers Schema Change:** Extending the model with order-level costs (e.g. freight, handling, taxes) that must be allocated across lines, or any header metric that would fan out and multiply if joined naïvely to line grain, would justify `FactOrderHeader` (or an equivalent pattern) to keep aggregations correct.
+
+---
+
+## Entry #13 - Model Validation Suite
+
+**Date:** March 2026<br>
+**Layer:** DAX measures: `FactOrders` → **`_Validation`** display folder
 
 **Decision:**
-Run a short set of **automated tests** in the model: row totals, order-date range, and **every order row links to a real customer and product** (no orphan keys).
+Run a short set of automated tests in the model: row totals, order-date range, and every order row links to a real customer and product (no orphan keys).
 
 **Organization:**
-Seven validation measures live in **`FactOrders`** under the **`_Validation`** display folder. The folder name starts with **`_`** so it sorts to the **top** of the field list and reads as **infrastructure**, not business reporting.
+Seven validation measures live in **`FactOrders`** under the **`_Validation`** display folder. The folder name starts with **`_`** so it sorts to the top of the field list and reads as infrastructure, not business reporting.
 
-**Tests and results** (values below match the **DataCo** source loaded in this model)
+**Tests and Results** (values below match the **DataCo** source loaded in this model)
 
 | Test | Expected | Result |
 |------|----------|--------|
@@ -277,8 +309,8 @@ Seven validation measures live in **`FactOrders`** under the **`_Validation`** d
 | Customer Match Check | 180,519 | Pass |
 | Product Match Check | 180,519 | Pass |
 
-**DAX patterns:**  
-`RELATED` needs **row context** on `FactOrders`, so row-by-row checks use an iterator such as `FILTER`. The **authoritative** formulas are the measures inside the published `.pbix`; the patterns below are representative.
+**DAX Patterns:**  
+`RELATED` needs row context on `FactOrders`, so row-by-row checks use an iterator such as `FILTER`. The authoritative formulas are the measures inside the published `.pbix`; the patterns below are representative.
 
 ```dax
 -- Row count
@@ -338,18 +370,18 @@ COUNTROWS (
 
 ---
 
-## Entry #13 — Model Validation Page Preserved
+## Entry #14 - Model Validation Page Preserved
 
 **Date:** March 2026<br>
-**Layer:** Report — page **“Model Validation”**
+**Layer:** Report Page - **Model Validation**
 
 **Decision:**
-Keep the **Model Validation** report page in the shipped `.pbix` after all validation **tests pass**.
+Keep the Model Validation report page in the shipped `.pbix` after all validation tests pass.
 
 **Rationale:**
-The page is a **reference** for anyone opening the file later: it shows **what was tested** and **the outcomes** without hunting through the measures list.
+The page is a reference for anyone opening the file later: it shows what was tested and the outcomes without hunting through the measures list.
 
-**Note:** Measure definitions and the `_Validation` folder are documented under **Entry #12**.
+**Note:** Measure definitions and the `_Validation` folder are documented under Entry #13.
 
 ---
 
@@ -358,12 +390,12 @@ The page is a **reference** for anyone opening the file later: it shows **what w
 | # | Limitation | Impact | Mitigation |
 |---|---|---|---|
 | 1 | No on-hand inventory snapshots in source data | True inventory turnover cannot be calculated | Demand velocity used as proxy. Documented in Executive Summary |
-| 2 | No Cost of Goods Sold (COGS) field. Only profit and revenue | Cannot calculate margin-based ABC weighting | Revenue-based ABC used. Industry standard approach |
+| 2 | No raw COGS column in source data | Cannot directly sum cost of goods as a native sourced field | Implied COGS = `Sales` − `Order Gross Profit` |
 | 3 | Late Delivery Risk was ML target variable | Source flag not calculated from actual shipping performance | Replaced with transparent Lead Time Variance derivation |
 | 4 | Product Description empty across all products | Cannot build product detail page | Column excluded |
 | 5 | Single flat file source. No supplier dimension | Cannot segment lead time by supplier | Used Shipping Mode as a substitute |
 
 ---
 
-*Document Version: 2.0 - Phase 1 ETL & Phase 2 Model Layer Complete*<br>
+*Document Version: 2.1 - Phase 1 ETL + Phase 2 Model Layer; FactOrders (decision-log entry 12); limitation log row two COGS / sales - gross profit correction*<br>
 *Next Update: Phase 3 - DAX Measures Layer*
