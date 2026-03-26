@@ -1,0 +1,6 @@
+# Ignore all CSVs (raw extracts / interim files)
+*.csv
+
+# Ignore Power BI Desktop project snapshots on main.
+# (The PBIX is still tracked on phase branches; this only affects untracked files.)
+*.pbix
