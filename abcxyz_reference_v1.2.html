@@ -77,6 +77,46 @@
     margin-bottom: 12px;
   }
 
+  .reference-note {
+    width: 100%;
+    margin-top: 24px;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  .reference-note p + p {
+    margin-top: 12px;
+  }
+
+  .reference-note code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--text);
+    background: rgba(255,255,255,0.06);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+
+  .reference-note a {
+    color: var(--x);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .reference-note a:hover {
+    color: #93c5fd;
+  }
+
+  .reference-note strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
   .legend {
     display: flex;
     flex-direction: column;
@@ -134,6 +174,16 @@
     font-size: 17px;
     color: var(--text);
     line-height: 1.5;
+  }
+
+  .framework-intro {
+    width: 100%;
+    margin-top: 32px;
+    margin-bottom: 14px;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.45;
   }
 
   .grid {
@@ -368,6 +418,11 @@
       font-size: 17px;
     }
 
+    .framework-intro {
+      font-size: 17px;
+      margin-top: 28px;
+    }
+
     .scenario-text {
       font-size: 16px;
     }
@@ -375,6 +430,11 @@
     footer {
       flex-direction: column;
       gap: 4px;
+    }
+
+    .reference-note {
+      font-size: 15px;
+      padding: 14px 14px;
     }
   }
 </style>
@@ -399,6 +459,13 @@
     </div>
   </div>
 </header>
+
+<section class="reference-note" aria-label="Source documentation and methodology">
+  <p><strong>Project source:</strong> A one-page reference for how ABC/XYZ classification assigns cycle count schedules in the Power BI project <a href="https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management">howardchungnyc/abc-xyz-segmentation-inventory-management</a>. For this catalog, X and Y share the same count schedule on every A, B, and C row. Z counts more often due to its unpredictable demand. Roughly 81% of this catalog&rsquo;s SKUs average under one unit sold per day, so day-to-day volume is too low for X and Y to require different real-world counting schedules. Only Z carries enough demand volatility to justify stepping the schedule up. See decision log Entry #22 in the linked repository&rsquo;s docs.</p>
+  <p><strong>CV calibration:</strong> X, Y, and Z band each SKU by how much daily unit sales fluctuate relative to that SKU&rsquo;s average daily volume (coefficient of variation = standard deviation of daily sales &divide; average daily sales). The legend lists this catalog&rsquo;s CV thresholds. They are <em>not</em> generic industry defaults or a standard 0&ndash;1 textbook CV band.</p>
+</section>
+
+<p class="framework-intro">Three ways to read each ABC/XYZ combination:</p>
 
 <div class="framework-row">
   <div class="framework-item" style="border-color:var(--a)">
@@ -432,15 +499,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">High. A miscounted A item puts top-line revenue at risk. Any gap between system and physical directly threatens fill rate on your highest-contribution SKU.</div>
+        <div class="lens-text">High: A miscounted A item puts top-line revenue at risk. Any gap between system and physical directly threatens fill rate on your highest-contribution SKU.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Modest. Stable demand means safety stock is sized primarily for lead time variance, not demand swings. Reorder points are reliable and consistent.</div>
+        <div class="lens-text">Modest: Stable demand means safety stock is sized primarily for lead time variance, not demand swings. Reorder points are reliable and consistent.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Low. Predictable movement makes discrepancies visible through normal operations. Errors are unlikely to compound before the next count.</div>
+        <div class="lens-text">Low: Predictable movement makes discrepancies visible through normal operations. Errors are unlikely to compound before the next count.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -454,7 +521,7 @@
     <div class="card-header">
       <div class="header-left">
         <div class="combo-badge combo-a">AY</div>
-        <span class="header-freq freq-bg-high">Count: Bi-weekly</span>
+        <span class="header-freq freq-bg-high">Count: Monthly</span>
       </div>
       <div class="tier-tags">
         <span class="tag tag-a">A-High Revenue</span>
@@ -464,15 +531,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">High. Revenue risk is top-tier. Demand swings raise the probability of a stockout during a peak period, amplifying the cost of any record inaccuracy.</div>
+        <div class="lens-text">High: Revenue risk is top-tier. Demand swings raise the probability of a stockout during a peak period, amplifying the cost of any record inaccuracy.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Moderate to high. Safety stock must buffer both demand variability and lead time variance. Reorder points are less reliable than AX and require closer monitoring.</div>
+        <div class="lens-text">Moderate to High: Safety stock must buffer both demand variability and lead time variance. Reorder points are less reliable than AX and require closer monitoring.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Moderate. Swing in movement gives errors partial cover. A discrepancy can look like a normal demand fluctuation and go undetected until a count is performed.</div>
+        <div class="lens-text">Moderate: Swing in movement gives errors partial cover. A discrepancy can look like a normal demand fluctuation and go undetected until a count is performed.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -496,15 +563,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Highest. Top-line revenue at risk with no predictable buffer. A stockout on an AZ item triggers premium freight and emergency orders at exactly the moment demand is already unpredictable.</div>
+        <div class="lens-text">Highest: Top-line revenue at risk with no predictable buffer. A stockout on an AZ item triggers premium freight and emergency orders at exactly the moment demand is already unpredictable.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Highest required. Must buffer wide demand swings and lead time variance simultaneously. Safety stock alone cannot compensate for record inaccuracy; both levers must work correctly.</div>
+        <div class="lens-text">Highest Required: Must buffer wide demand swings and lead time variance simultaneously. Safety stock alone cannot compensate for record inaccuracy; both levers must work correctly.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Highest. No consistent movement baseline. Errors from mispicks, receiving mistakes, or unrecorded damage blend into normal volatility and compound across weeks undetected.</div>
+        <div class="lens-text">Highest: No consistent movement baseline. Errors from mispicks, receiving mistakes, or unrecorded damage blend into normal volatility and compound across weeks undetected.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -528,15 +595,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Moderate. A stockout is a real margin hit but not a critical revenue event. BX items rarely trigger emergency orders because the pattern is stable enough to catch gaps early.</div>
+        <div class="lens-text">Moderate: A stockout is a real margin hit but not a critical revenue event. BX items rarely trigger emergency orders because the pattern is stable enough to catch gaps early.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Low to moderate. Stable demand means safety stock is sized conservatively. Lead time variance is the primary buffer concern, not demand swings.</div>
+        <div class="lens-text">Low to Moderate: Stable demand means safety stock is sized conservatively. Lead time variance is the primary buffer concern, not demand swings.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Low. Stable movement makes discrepancies visible quickly. Errors are caught through normal operations before they affect a replenishment decision.</div>
+        <div class="lens-text">Low: Stable movement makes discrepancies visible quickly. Errors are caught through normal operations before they affect a replenishment decision.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -550,7 +617,7 @@
     <div class="card-header">
       <div class="header-left">
         <div class="combo-badge combo-b">BY</div>
-        <span class="header-freq freq-bg-med">Count: Monthly</span>
+        <span class="header-freq freq-bg-med">Count: Quarterly</span>
       </div>
       <div class="tier-tags">
         <span class="tag tag-b">B-Mid Revenue</span>
@@ -560,15 +627,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Moderate. Revenue impact of a stockout is real but not critical. Demand swings increase the probability of a short during a peak period, even if the financial consequence is bounded.</div>
+        <div class="lens-text">Moderate: Revenue impact of a stockout is real but not critical. Demand swings increase the probability of a short during a peak period, even if the financial consequence is bounded.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Moderate. Safety stock must account for both demand variability and lead time. Reorder points are less reliable than BX and warrant closer monitoring during demand peaks.</div>
+        <div class="lens-text">Moderate: Safety stock must account for both demand variability and lead time. Reorder points are less reliable than BX and warrant closer monitoring during demand peaks.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Moderate. Demand swings give errors partial cover. A discrepancy can look like a normal fluctuation and go undetected until a formal count is performed, especially during slow periods.</div>
+        <div class="lens-text">Moderate: Demand swings give errors partial cover. A discrepancy can look like a normal fluctuation and go undetected until a formal count is performed, especially during slow periods.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -582,7 +649,7 @@
     <div class="card-header">
       <div class="header-left">
         <div class="combo-badge combo-b">BZ</div>
-        <span class="header-freq freq-bg-med">Count: Bi-weekly</span>
+        <span class="header-freq freq-bg-med">Count: Monthly</span>
       </div>
       <div class="tier-tags">
         <span class="tag tag-b">B-Mid Revenue</span>
@@ -592,15 +659,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Moderate. Individual stockouts are manageable, but BZ items that consistently have record errors quietly erode service levels across the catalog without triggering obvious financial alarms.</div>
+        <div class="lens-text">Moderate: Individual stockouts are manageable, but BZ items that consistently have record errors quietly erode service levels across the catalog without triggering obvious financial alarms.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">High relative to revenue contribution. Erratic demand requires a larger buffer, but the revenue generated may not justify the carrying cost. A candidate for safety stock rationalization review.</div>
+        <div class="lens-text">High Relative to Revenue Contribution: Erratic demand requires a larger buffer, but the revenue generated may not justify the carrying cost. A candidate for safety stock rationalization review.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">High. No consistent movement baseline. Errors accumulate and blend into volatility noise. Compounding errors across multiple BZ SKUs can produce a meaningful aggregate impact on fill rate.</div>
+        <div class="lens-text">High: No consistent movement baseline. Errors accumulate and blend into volatility noise. Compounding errors across multiple BZ SKUs can produce a meaningful aggregate impact on fill rate.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -614,7 +681,7 @@
     <div class="card-header">
       <div class="header-left">
         <div class="combo-badge combo-c">CX</div>
-        <span class="header-freq freq-bg-low">Count: Semi-annual</span>
+        <span class="header-freq freq-bg-low">Count: Semi-Annual</span>
       </div>
       <div class="tier-tags">
         <span class="tag tag-c">C-Low Revenue</span>
@@ -624,15 +691,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Minimal. A stockout on a C item has negligible revenue impact. The cost of a formal count may exceed the cost of a stockout on this SKU.</div>
+        <div class="lens-text">Minimal: A stockout on a C item has negligible revenue impact. The cost of a formal count may exceed the cost of a stockout on this SKU.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Minimal. Stable, low-velocity demand requires very little buffer. Replenishment is straightforward and lead time variance is manageable without large reserves.</div>
+        <div class="lens-text">Minimal: Stable, low-velocity demand requires very little buffer. Replenishment is straightforward and lead time variance is manageable without large reserves.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Lowest. Stable movement and low volume make discrepancies easy to spot and cheap to absorb. Errors rarely compound, and even when they do, the financial consequence is negligible.</div>
+        <div class="lens-text">Lowest: Stable movement and low volume make discrepancies easy to spot and cheap to absorb. Errors rarely compound, and even when they do, the financial consequence is negligible.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -646,7 +713,7 @@
     <div class="card-header">
       <div class="header-left">
         <div class="combo-badge combo-c">CY</div>
-        <span class="header-freq freq-bg-low">Count: Quarterly</span>
+        <span class="header-freq freq-bg-low">Count: Semi-Annual</span>
       </div>
       <div class="tier-tags">
         <span class="tag tag-c">C-Low Revenue</span>
@@ -656,15 +723,15 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Low. Demand swings raise the probability of a short during peak periods, but the revenue consequence remains small. Stockouts here rarely warrant emergency corrective action.</div>
+        <div class="lens-text">Low: Demand swings raise the probability of a short during peak periods, but the revenue consequence remains small. Stockouts here rarely warrant emergency corrective action.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Low to moderate. Some buffer is needed for demand swings, but carrying cost should be kept lean given the low revenue contribution. Over-stocking CY items is a common hidden cost.</div>
+        <div class="lens-text">Low to Moderate: Some buffer is needed for demand swings, but carrying cost should be kept lean given the low revenue contribution. Over-stocking CY items is a common hidden cost.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">Low to moderate. Demand swings can give small errors partial cover, but low transaction volume limits how much can compound. Financial consequence of undetected errors remains minimal.</div>
+        <div class="lens-text">Low to Moderate: Demand swings can give small errors partial cover, but low transaction volume limits how much can compound. Financial consequence of undetected errors remains minimal.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
@@ -678,7 +745,7 @@
     <div class="card-header">
       <div class="header-left">
         <div class="combo-badge combo-c">CZ</div>
-        <span class="header-freq freq-bg-low">Count: Annual / Review for discontinuation</span>
+        <span class="header-freq freq-bg-low">Count: Quarterly</span>
       </div>
       <div class="tier-tags">
         <span class="tag tag-c">C-Low Revenue</span>
@@ -688,19 +755,19 @@
     <div class="card-body">
       <div class="lens">
         <div class="lens-label">ABC-Stockout Exposure</div>
-        <div class="lens-text">Minimal. Revenue consequence of a stockout is negligible. The primary risk is fulfillment SLA or customer experience, not margin. CZ items are common SKU rationalization candidates.</div>
+        <div class="lens-text">Minimal: Revenue consequence of a stockout is negligible. The primary risk is fulfillment SLA or customer experience, not margin. CZ items are common SKU rationalization candidates.</div>
       </div>
       <div class="lens">
         <div class="lens-label">Safety Stock</div>
-        <div class="lens-text">Disproportionately high relative to revenue. Erratic demand forces a larger buffer that the revenue contribution cannot justify. Carrying cost and count effort on CZ items often exceed the value they generate.</div>
+        <div class="lens-text">Disproportionately High Relative to Revenue: Erratic demand forces a larger buffer that the revenue contribution cannot justify. Carrying cost and count effort on CZ items often exceed the value they generate.</div>
       </div>
       <div class="lens">
         <div class="lens-label">XYZ-Record Accuracy Risk</div>
-        <div class="lens-text">High concealment, low consequence. Errors hide longest on Z-tier SKUs, but on a C item the financial impact of compounding errors is negligible. Count resources are better allocated up the matrix.</div>
+        <div class="lens-text">High Concealment, Low Consequence: Errors hide longest on Z-tier SKUs, but on a C item the financial impact of compounding errors is negligible. Count resources are better allocated up the matrix.</div>
       </div>
       <div class="scenario-box">
         <div class="scenario-label">Scenario</div>
-        <div class="scenario-text">A long-tail SKU with unpredictable, low-revenue demand carries compounding record errors across a long count interval. A stockout occurs but the financial impact is immaterial. This combination consistently surfaces as a rationalization candidate: the carrying cost, safety stock, and count effort collectively outweigh the SKU's revenue contribution.</div>
+        <div class="scenario-text">A low-revenue SKU with erratic movement, often quiet for several weeks then short bursts of picks, accumulates unrecorded mispicks and receiving gaps across the full quarterly interval between counts. System shows 35 on hand; physical count finds 10. Replenishment was sized on the inflated record. When demand spikes briefly, the team is short. Stockout cost is immaterial and does not register at the P&L level. Carrying cost, safety stock, and count effort together typically outweigh this SKU's revenue contribution, a common rationalization signal.</div>
       </div>
     </div>
   </div>
@@ -708,7 +775,7 @@
 </div>
 
 <footer>
-  <span>ABC/XYZ Cycle Count Framework-DataCo Supply Chain Analytics</span>
+  <span>ABC/XYZ Cycle Count Framework</span>
   <span>APICS CPIM-Demand Variability &amp; Record Accuracy Framework</span>
 </footer>
 
