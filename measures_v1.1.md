@@ -1,6 +1,6 @@
 # DAX Measures Reference
 
-## ABC Product Segmentation & Inventory Management
+## ABC XYZ Inventory Segmentation & Management
 ### Power BI Project: Phase 3 (DAX Layer)
 
 ---
@@ -15,10 +15,10 @@
 |---|---|
 | `[Measure Name]` | DAX measure reference |
 | `Table[Column]` | Column reference |
-| ⚠ | Measure has a known limitation or requires careful interpretation |
-| 🔒 | Locked context measure - filter arguments intentionally remove slicers |
-| 🧪 | Testing/simulation infrastructure - not a business deliverable |
-| ❌ | Deprecated - retained for audit trail only |
+| `[Caution]` | Measure has a known limitation or requires careful interpretation |
+| `[Fixed Context]` | Locked context measure - filter arguments intentionally remove slicers |
+| `[Test]` | Testing/simulation infrastructure - not a business deliverable |
+| `[Deprecated]` | Deprecated - retained for audit trail only |
 
 ---
 
@@ -34,9 +34,9 @@
 8. [\_Measures\Financial Impact](#measuresfinancial-impact)
 9. [\_Measures\Trend Analysis](#measurestrend-analysis)
 10. [DimProduct Calculated Columns](#dimproduct-calculated-columns)
-11. [Measure Dependency Map](#measure-dependency-map)
-12. [Build Order Reference](#build-order-reference)
-13. [ABC/XYZ Cycle Count Schedule](#abcxyz-cycle-count-schedule)
+11. [Build Order Reference](#build-order-reference)
+12. [ABC XYZ Cycle Count Schedule](#abc-xyz-cycle-count-schedule)
+13. [Measure Dependency Map](#measure-dependency-map)
 
 ---
 
@@ -61,10 +61,6 @@ FactOrders
 │   │   ├── CV 75th Percentile
 │   │   ├── CV 90th Percentile
 │   │   ├── Delivery Status Row Count
-│   │   ├── Demand 25th Percentile
-│   │   ├── Demand 50th Percentile
-│   │   ├── Demand 75th Percentile
-│   │   ├── Demand 90th Percentile
 │   │   ├── Earliest Order Date
 │   │   ├── Latest Order Date
 │   │   ├── Product Match Check
@@ -78,14 +74,6 @@ FactOrders
 │   │   ├── SKU Count - Z
 │   │   └── SKU Count at Rank (Tie Check)
 │   │
-│   ├── Inventory Segmentation
-│   │   ├── ABC Tier
-│   │   ├── Coefficient of Variation
-│   │   ├── Cumulative Revenue %
-│   │   ├── Revenue by SKU (12-Month Trailing)
-│   │   ├── SKU Rank by Revenue
-│   │   └── XYZ Classification
-│   │
 │   ├── Core Measures
 │   │   ├── Avg Order Value
 │   │   ├── Avg Profit Margin %
@@ -93,14 +81,6 @@ FactOrders
 │   │   ├── Total Orders
 │   │   ├── Total Revenue
 │   │   └── Total Units Sold
-│   │
-│   ├── Supply Performance
-│   │   ├── Avg Lead Time (Actual)
-│   │   ├── Avg Lead Time (Scheduled)
-│   │   ├── Avg Lead Time Variance
-│   │   ├── Late Delivery Rate %
-│   │   ├── Lead Time Variance Std Dev
-│   │   └── On-Time Delivery Rate %
 │   │
 │   ├── Inventory Planning
 │   │   ├── Avg Daily Demand by SKU
@@ -110,6 +90,22 @@ FactOrders
 │   │   ├── Reorder Quantity
 │   │   ├── Safety Stock
 │   │   └── Stock Coverage (Days)
+│   │
+│   ├── Inventory Segmentation
+│   │   ├── ABC Tier
+│   │   ├── Coefficient of Variation
+│   │   ├── Cumulative Revenue %
+│   │   ├── Revenue by SKU (12-Month Trailing)
+│   │   ├── SKU Rank by Revenue
+│   │   └── XYZ Classification
+│   │
+│   ├── Supply Performance
+│   │   ├── Avg Lead Time (Actual)
+│   │   ├── Avg Lead Time (Scheduled)
+│   │   ├── Avg Lead Time Variance
+│   │   ├── Late Delivery Rate %
+│   │   ├── Lead Time Variance Std Dev
+│   │   └── On-Time Delivery Rate %
 │   │
 │   ├── Financial Impact               ⬜ Pending
 │   │   ├── Avg Margin % by ABC Tier
@@ -144,21 +140,21 @@ Measures retained for audit trail and analytical evolution documentation. Do not
 
 ---
 
-### Demand Std Dev (DEPRECATED - order level, not daily level) ❌
+### Demand Std Dev (DEPRECATED - order level, not daily level) `[Deprecated]`
 
 **Replaced by:** `[Demand Std Dev (Daily)]`<br>
 **Reason:** `STDEV.P(FactOrders[Order Quantity])` measures order size variability, not daily demand variability. Distorts safety stock. See decision-log.md Entry #20.
 
 ---
 
-### Demand Velocity Band (DEPRECATED - superseded by XYZ Classification) ❌
+### Demand Velocity Band (DEPRECATED - superseded by XYZ Classification) `[Deprecated]`
 
 **Replaced by:** `[XYZ Classification]`<br>
 **Reason:** Velocity banding without CV (Coefficient of Variation) normalization does not account for demand predictability, it only accounts for speed. See decision-log.md Entry #17.
 
 ---
 
-### SKU Count by Velocity Band (DEPRECATED - superseded by XYZ Classification) ❌
+### SKU Count by Velocity Band (DEPRECATED - superseded by XYZ Classification) `[Deprecated]`
 
 **Replaced by:** `SKU Count - X`, `SKU Count - Y`, `SKU Count - Z` in `_Validation`<br>
 **Reason:** Superseded by XYZ classification. Velocity band counts no longer drive replenishment decisions. See decision-log.md Entry #17.
@@ -624,7 +620,7 @@ DIVIDE(
 
 **Notes:**
 - `DIVIDE` used instead of `/` — handles division by zero gracefully.
-- Validated: $36,784,734.31 ÷ 65,752 = $559.45 unfiltered. ✅
+- Validated: $36,784,734.31 ÷ 65,752 = $559.45 unfiltered.
 
 ---
 
@@ -645,7 +641,7 @@ AVERAGE(FactOrders[Profit Ratio])
 **Notes:**
 - `Profit Ratio` is a raw 0–1 decimal field in FactOrders. Format set to Percentage in model properties — no multiplication by 100 in DAX.
 - Total row recalculates across all rows directly — not an average of averages.
-- Validated: 12.06% unfiltered. Varies meaningfully by department. ✅
+- Validated: 12.06% unfiltered. Varies meaningfully by department.
 
 ---
 
@@ -685,7 +681,7 @@ DISTINCTCOUNT(FactOrders[Order Id])
 
 **Notes:**
 - Uses `DISTINCTCOUNT` not `COUNTROWS`. FactOrders is at line-item grain — 180,519 rows, 65,752 distinct orders. See decision-log.md Entry #13.
-- Validated: 65,752 unfiltered. ✅
+- Validated: 65,752 unfiltered.
 
 ---
 
@@ -735,7 +731,7 @@ SUM(FactOrders[Order Quantity])
 
 ---
 
-### Avg Daily Demand by SKU 🔒
+### Avg Daily Demand by SKU `[Fixed Context]`
 
 **Table:** FactOrders<br>
 **Format:** Decimal number, 2 decimal places<br>
@@ -776,14 +772,14 @@ RETURN
 **Description:** Average units sold per day in the trailing 12-month window. Represents expected daily demand for replenishment calculations.
 
 **Notes:**
-- 🔒 `ALL(DimCustomer)` removes customer segment filters — demand reflects total market.
+- `[Fixed Context]` `ALL(DimCustomer)` removes customer segment filters — demand reflects total market.
 - `WindowDays` counts actual calendar days rather than hardcoding 365 — accounts for leap years.
 - Window: Feb 1, 2017 → Jan 31, 2018 = 365 days for this dataset.
 - Primary input to Safety Stock and Reorder Point.
 
 ---
 
-### Demand Std Dev (Daily) 🔒
+### Demand Std Dev (Daily) `[Fixed Context]`
 
 **Table:** FactOrders<br>
 **Format:** Decimal number, 2 decimal places<br>
@@ -862,7 +858,7 @@ RETURN
 **Notes:**
 - Three-state logic. Stockout (inventory = 0) and Reorder Now (inventory ≤ Reorder Point) trigger different operational workflows.
 - Returns BLANK at subtotal/total rows via `SELECTEDVALUE`.
-- 🧪 Depends on simulated inventory. In production replace source column only — no formula changes needed.
+- `[Test]` Depends on simulated inventory. In production replace source column only — no formula changes needed.
 
 ---
 
@@ -954,11 +950,11 @@ RETURN
 **Description:** Suggested replenishment order quantity to bring inventory back to target coverage level based on XYZ demand predictability tier.
 
 **Notes:**
-- ⚠ Target days (60/45/30) are literature-based constants, not derived from this dataset's cost structure. In production, optimize using actual holding cost and ordering cost per SKU. See Limitation #7.
-- ⚠ Continuous review model produces minimal differentiation for 81% of catalog (< 1 unit/day). Periodic review is the correct model for slow-moving SKUs. See Limitation #7.
+- `[Caution]` Target days (60/45/30) are literature-based constants, not derived from this dataset's cost structure. In production, optimize using actual holding cost and ordering cost per SKU. See Limitation #7.
+- `[Caution]` Continuous review model produces minimal differentiation for 81% of catalog (< 1 unit/day). Periodic review is the correct model for slow-moving SKUs. See Limitation #7.
 - Lead time NOT added to formula — average demand during lead time is embedded in Reorder Point trigger. Adding here would double-count.
 - Max cap = 1.5× target days per APICS min/max methodology.
-- 🧪 Depends on simulated inventory. In production replace source column only.
+- `[Test]` Depends on simulated inventory. In production replace source column only.
 
 ---
 
@@ -1043,7 +1039,7 @@ RETURN
 **Notes:**
 - `CEILING` rounds up — partial days rounded up to avoid understating coverage.
 - Returns BLANK at subtotal/total rows via `SELECTEDVALUE`.
-- 🧪 Depends on simulated inventory.
+- `[Test]` Depends on simulated inventory.
 - Unit: days (whole number).
 
 ---
@@ -1165,7 +1161,7 @@ IF(
 
 ---
 
-### Revenue by SKU (12-Month Trailing) 🔒
+### Revenue by SKU (12-Month Trailing) `[Fixed Context]`
 
 **Table:** FactOrders<br>
 **Format:** Currency, 2 decimal places<br>
@@ -1198,7 +1194,7 @@ RETURN
 **Description:** Total revenue for this product in the trailing 12-month window used for ABC classification. Not affected by date or customer slicers.
 
 **Notes:**
-- 🔒 Locked context measure. `ALL(DimDate)` and `ALL(DimCustomer)` intentionally remove slicer filters — classification reflects total market demand.
+- `[Fixed Context]` Locked context measure. `ALL(DimDate)` and `ALL(DimCustomer)` intentionally remove slicer filters — classification reflects total market demand.
 - `WindowEnd` anchored to `MAX(FactOrders[Order Date])` not `MAX(DimDate[Date])` — DimDate includes 1-year padding. Using DimDate max produces an empty window. See decision-log.md Entry #17.
 - `DimDate[Date] > WindowStart` (not `>=`) — ensures exactly 12 calendar months. `>=` adds an extra day.
 - 12-month window: Feb 1, 2017 → Jan 31, 2018.
@@ -1383,7 +1379,7 @@ CALCULATE(
 **Notes:**
 - `Late Delivery Risk` is a 0/1 integer column. `AVERAGE` of a binary field equals the proportion of 1s — mathematically equivalent to a rate.
 - Validated total: 57.3%. High rate reflects DataCo dataset characteristics — not a measure error. See Limitation #6.
-- 98,977 late ÷ 172,765 non-canceled = 57.3% ✅
+- 98,977 late ÷ 172,765 non-canceled = 57.3%
 
 ---
 
@@ -1439,13 +1435,13 @@ Measures to be built:
 
 | Measure | Description | Data type |
 |---|---|---|
-| `Implied COGS` | `[Total Revenue] - [Total Gross Profit]` | Real data ✅ |
-| `Gross Profit by ABC Tier` | Gross profit filtered to A/B/C tier | Real data ✅ |
-| `Avg Margin % by ABC Tier` | Average profit margin by tier | Real data ✅ |
-| `Pareto Concentration Ratio` | % of SKUs driving 80% of revenue | Real data ✅ |
-| `Carrying Cost Estimate` | Inventory value × 25% annual rate (APICS standard) | Modeled estimate ⚠ |
-| `Revenue at Risk (Supply)` | A-tier revenue × Late Delivery Rate % — exposure to late supplier delivery | Real data ✅ |
-| `Revenue at Risk (Stockout)` | Flagged SKUs × Avg Daily Demand × Avg Lead Time × Unit Price — potential lost revenue during active stockout window | Modeled estimate 🧪 |
+| `Implied COGS` | `[Total Revenue] - [Total Gross Profit]` | Real data |
+| `Gross Profit by ABC Tier` | Gross profit filtered to A/B/C tier | Real data |
+| `Avg Margin % by ABC Tier` | Average profit margin by tier | Real data |
+| `Pareto Concentration Ratio` | % of SKUs driving 80% of revenue | Real data |
+| `Carrying Cost Estimate` | Inventory value × 25% annual rate (APICS standard) | Modeled estimate `[Caution]` |
+| `Revenue at Risk (Supply)` | A-tier revenue × Late Delivery Rate % — exposure to late supplier delivery | Real data |
+| `Revenue at Risk (Stockout)` | Flagged SKUs × Avg Daily Demand × Avg Lead Time × Unit Price — potential lost revenue during active stockout window | Modeled estimate `[Test]` |
 
 **Carrying cost rate:** 25% annual. APICS standard range 20–30%. Components: capital cost ~12%, storage ~4%, obsolescence/shrinkage ~5%, insurance/taxes ~4%. Source: APICS CPIM Body of Knowledge.
 
@@ -1550,12 +1546,12 @@ RETURN
 
 **Notes:**
 - APICS-aligned: count frequency proportional to both revenue contribution and demand variability.
-- AZ (high revenue, erratic demand) = weekly — most dangerous combination. Stockout is expensive AND demand is unpredictable.
-- CX (low revenue, stable demand) = semi-annual — safest combination. Low stockout cost AND predictable demand.
-- "Review" returned for unexpected combinations — signals unclassified SKUs needing manual assessment.
+- AZ (high revenue, erratic demand) = weekly - most dangerous combination. Stockout is expensive AND demand is unpredictable.
+- CX (low revenue, stable demand) = semi-annual - safest combination. Low stockout cost AND predictable demand.
+- "Review" returned for unexpected combinations - signals unclassified SKUs needing manual assessment.
 - Stamped at refresh time. Updates automatically when ABC or XYZ classification changes on refresh.
 
-**ABC/XYZ Cycle Count Matrix:**
+**ABC XYZ Cycle Count Matrix:**
 
 | | X (Stable) | Y (Moderate) | Z (Erratic) |
 |---|---|---|---|
@@ -1566,7 +1562,7 @@ RETURN
 
 ---
 
-### Demand Velocity Band (DEPRECATED - XYZ Classification) ❌
+### Demand Velocity Band (DEPRECATED - XYZ Classification) `[Deprecated]`
 
 **Table:** DimProduct<br>
 **Folder:** Inventory Segmentation<br>
@@ -1575,7 +1571,7 @@ RETURN
 
 ---
 
-### Simulated Inventory Level 🧪
+### Simulated Inventory Level `[Test]`
 
 **Table:** DimProduct<br>
 **Folder:** Inventory Segmentation<br>
@@ -1593,7 +1589,7 @@ RETURN
 ```
 
 **Notes:**
-- 🧪 Testing infrastructure only. No analytical conclusions from this column.
+- `[Test]` Testing infrastructure only. No analytical conclusions from this column.
 - Demand-proportionate: simulation range scales to each SKU's velocity.
 - In production: replace with live WMS/ERP on-hand snapshot. `Reorder Flag`, `Stock Coverage (Days)`, `Reorder Quantity` require no formula changes.
 
@@ -1638,7 +1634,55 @@ RETURN
 
 ---
 
-## Measure Dependency Map
+## Build Order Reference
+
+| Layer | Measures | Must build after |
+|---|---|---|
+| 1 - Core Measures | Total Revenue, Total Gross Profit, Total Units Sold, Total Orders, Avg Order Value, Avg Profit Margin % | Nothing |
+| 2 - Inventory Segmentation | Revenue by SKU (12-Month Trailing), SKU Rank by Revenue, Cumulative Revenue %, ABC Tier | Layer 1 complete |
+| 2a - DimProduct columns | ABC Tier (Classification) | Layer 2 complete |
+| 3 - Supply Performance | All six lead time measures | Layer 1 complete |
+| 4 - Inventory Planning | Avg Daily Demand by SKU, Demand Std Dev (Daily), Coefficient of Variation, Safety Stock, Reorder Point, Reorder Quantity, Reorder Flag, Stock Coverage (Days) | Layers 2 and 3 complete |
+| 4a - DimProduct columns | XYZ Classification, Simulated Inventory Level, Cycle Count Schedule | Layer 4 complete |
+| 5 - Financial Impact | Implied COGS, Gross Profit by ABC Tier, Avg Margin % by ABC Tier, Pareto Concentration Ratio, Carrying Cost Estimate, Revenue at Risk (Supply), Revenue at Risk (Stockout) | Layers 1–4 complete |
+| 6 - Trend Analysis | Revenue YoY, Revenue vs Prior Period, Rolling 90-Day Demand | Layer 1 complete |
+
+---
+
+## ABC XYZ Cycle Count Schedule
+
+The combined ABC XYZ matrix is the industry-standard idea for tying cycle count frequency to both revenue concentration and demand variability. In this model, neither axis assigns cadence alone: `DimProduct[Cycle Count Schedule]` evaluates the pair (ABC tier letter + XYZ class letter), e.g. `AX` or `BZ`, and returns one label via `SWITCH`. **ABC tier** encodes how costly an inventory error is in revenue terms. **XYZ class** encodes demand variability (CV), a proxy for how easily system-to-physical error can stay hidden between counts. Together they yield nine active combinations (plus Inactive → Annual) with differentiated schedules.
+
+Operationally, count frequency is always a joint outcome of that pair—not “XYZ only.” **Z** (high CV) tightens counts relative to **X** and **Y** at the same ABC row because erratic demand provides less natural signal between formal counts. In this DataCo catalog, **X and Y share the same frequency at every ABC tier** (see `decision-log.md` Entry #22): breakpoints are this dataset’s 25th / 75th CV percentiles (3.96 / 10.91), and low average daily demand inflates CV so X vs Y does not separate discrepancy risk enough to merit different cadences—Z is the operationally meaningful split. A miscounted A item still drives the highest revenue exposure; a Z item still compounds error longest. Under a different population—e.g. textbook XYZ bands on a normalized or low CV scale (such as 0–1) suited to higher-velocity catalogs—X and Y would often map to different frequencies and the matrix would need to be rebuilt.
+
+**Source:** APICS CPIM Body of Knowledge — cycle count frequency proportional to revenue contribution and demand variability.
+
+### Matrix
+
+| | X (Stable, CV ≤ 3.96) | Y (Moderate, CV 3.96–10.91) | Z (Erratic, CV > 10.91) |
+|---|---|---|---|
+| **A** (top 80% revenue) | Monthly | Monthly | **Weekly** |
+| **B** (80–95% revenue) | Quarterly | Quarterly | Monthly |
+| **C** (bottom 5% revenue) | Semi-Annual | Semi-Annual | Quarterly |
+| **Inactive** | Annual | Annual | Annual |
+
+### Operational Rationale by Combination
+
+| Combination | Frequency | Rationale |
+|---|---|---|
+| AZ | Weekly | Highest revenue + most erratic demand = maximum risk of costly undetected discrepancy |
+| AX / AY | Monthly | High revenue justifies frequent counts regardless of demand stability |
+| BZ | Monthly | Moderate revenue + erratic demand — discrepancy risk warrants elevated frequency |
+| BX / BY | Quarterly | Moderate revenue, manageable risk with quarterly review |
+| CZ | Quarterly | Low revenue but erratic — periodic check prevents accumulation of small errors |
+| CX / CY | Semi-Annual | Low revenue, stable demand — minimal discrepancy risk, low count frequency acceptable |
+| Inactive | Annual | Outside active classification scope — annual physical audit sufficient |
+
+### Implementation
+
+`Cycle Count Schedule` is a calculated column in DimProduct. It concatenates ABC and XYZ tier labels and uses SWITCH to assign frequency. Refreshes automatically with model refresh — no manual updates needed when tier assignments change.
+
+### Measure Dependency Map
 
 ```
 Total Revenue ──────────────────────────────────────────► Revenue by SKU (12-Month Trailing)
@@ -1668,54 +1712,6 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-## Build Order Reference
-
-| Layer | Measures | Must build after |
-|---|---|---|
-| 1 — Core Measures | Total Revenue, Total Gross Profit, Total Units Sold, Total Orders, Avg Order Value, Avg Profit Margin % | Nothing |
-| 2 — Inventory Segmentation | Revenue by SKU (12-Month Trailing), SKU Rank by Revenue, Cumulative Revenue %, ABC Tier | Layer 1 complete |
-| 2a — DimProduct columns | ABC Tier (Classification) | Layer 2 complete |
-| 3 — Supply Performance | All six lead time measures | Layer 1 complete |
-| 4 — Inventory Planning | Avg Daily Demand by SKU, Demand Std Dev (Daily), Coefficient of Variation, Safety Stock, Reorder Point, Reorder Quantity, Reorder Flag, Stock Coverage (Days) | Layers 2 and 3 complete |
-| 4a — DimProduct columns | XYZ Classification, Simulated Inventory Level, Cycle Count Schedule | Layer 4 complete |
-| 5 — Financial Impact | Implied COGS, Gross Profit by ABC Tier, Avg Margin % by ABC Tier, Pareto Concentration Ratio, Carrying Cost Estimate, Revenue at Risk (Supply), Revenue at Risk (Stockout) | Layers 1–4 complete |
-| 6 — Trend Analysis | Revenue YoY, Revenue vs Prior Period, Rolling 90-Day Demand | Layer 1 complete |
-
----
-
-## ABC/XYZ Cycle Count Schedule
-
-The combined ABC/XYZ matrix is the industry-standard framework for setting cycle count frequency. ABC tier determines revenue risk (how costly is an inventory error on this SKU?). XYZ tier determines detection probability (how likely is an erratic SKU to have a discrepancy?). Together they produce nine active combinations with operationally differentiated count schedules.
-
-**Source:** APICS CPIM Body of Knowledge — cycle count frequency proportional to revenue contribution and demand variability.
-
-### Matrix
-
-| | X (Stable, CV ≤ 3.96) | Y (Moderate, CV 3.96–10.91) | Z (Erratic, CV > 10.91) |
-|---|---|---|---|
-| **A** (top 80% revenue) | Monthly | Monthly | **Weekly** |
-| **B** (80–95% revenue) | Quarterly | Quarterly | Monthly |
-| **C** (bottom 5% revenue) | Semi-Annual | Semi-Annual | Quarterly |
-| **Inactive** | Annual | Annual | Annual |
-
-### Operational Rationale by Combination
-
-| Combination | Frequency | Rationale |
-|---|---|---|
-| AZ | Weekly | Highest revenue + most erratic demand = maximum risk of costly undetected discrepancy |
-| AX / AY | Monthly | High revenue justifies frequent counts regardless of demand stability |
-| BZ | Monthly | Moderate revenue + erratic demand — discrepancy risk warrants elevated frequency |
-| BX / BY | Quarterly | Moderate revenue, manageable risk with quarterly review |
-| CZ | Quarterly | Low revenue but erratic — periodic check prevents accumulation of small errors |
-| CX / CY | Semi-Annual | Low revenue, stable demand — minimal discrepancy risk, low count frequency acceptable |
-| Inactive | Annual | Outside active classification scope — annual physical audit sufficient |
-
-### Implementation
-
-`Cycle Count Schedule` is a calculated column in DimProduct. It concatenates ABC and XYZ tier labels and uses SWITCH to assign frequency. Refreshes automatically with model refresh — no manual updates needed when tier assignments change.
-
----
-
 *Document Version: 1.1 — Phase 3 DAX Layer (updated)*<br>
 *Changes from v1.0:*
 - *Display folder names updated to APICS/SCOR aligned labels (Entry #16)*
@@ -1725,5 +1721,5 @@ The combined ABC/XYZ matrix is the industry-standard framework for setting cycle
 - *Cycle Count Schedule calculated column added to DimProduct*
 - *Financial Impact and Trend Analysis sections added (pending)*
 - *Grain constraint documentation added to Inventory Planning section*
-- *ABC/XYZ Cycle Count Schedule reference table added*<br>
+- *ABC XYZ Cycle Count Schedule reference table added*<br>
 *Next Update: Phase 3 completion — Financial Impact and Trend Analysis measures*

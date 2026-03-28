@@ -1,14 +1,14 @@
-# ABC Product Segmentation & Inventory Management
+# ABC XYZ Inventory Segmentation & Management
 
 ## Business Problem
 
-A Power BI solution built on the DataCo Smart Supply Chain dataset. It addresses questions warehouse and distribution operations ask every day: which SKUs drive revenue, what to cycle count first, where to hold safety stock, and when late shipments point to higher stockout risk. Those answers live in one standard report everyone can use, not scattered spreadsheets or undocumented know-how held only by select individuals. ABC inventory tiers are built from revenue contribution. The Power BI report links this product classification system to cycle counting schedules and replenishment planning, and flags stockout risk earlier.
+A Power BI solution built on the DataCo Smart Supply Chain dataset. It addresses questions warehouse and distribution operations ask every day: which SKUs drive revenue, what to cycle count first, where to hold safety stock, and when late shipments point to higher stockout risk. Those answers live in one standard report everyone can use, not scattered spreadsheets or undocumented know-how held only by select individuals. **ABC** tiers rank SKUs by revenue contribution (Pareto); **XYZ** classifies demand predictability from coefficient of variation. Together they drive segmentation, replenishment logic, and risk signals. The Power BI report links this ABC XYZ classification system to a combined cycle count matrix and replenishment planning, and flags stockout risk earlier.
 
 ---
 
 ## Background
 
-ABC inventory classification is one of the most fundamental tools in supply chain operations. In practice it's often done manually, inconsistently, and stored entirely in someone's head. This project systematizes that process by connecting product revenue segmentation to cycle counting programs, PAR levels, safety stock calculations, and replenishment triggers.
+ABC XYZ inventory classification is one of the most fundamental tools in supply chain operations. In practice it's often done manually, inconsistently, and stored entirely in someone's head. This project systematizes that process by tying **ABC** (revenue tier, Pareto concentration) and **XYZ** (demand variability from coefficient of variation) to the same analytics stack: cycle count cadence follows the combined ABC XYZ matrix (each SKU is a pair such as AX or BZ). **In this dataset**, X and Y share the same count frequency at every ABC tier because XYZ breakpoints are set from this catalog’s CV percentiles and low average daily demand makes a finer X vs Y split redundant except at the **Z** threshold (see `decision-log.md` Entry #22). Under a different population, e.g. textbook XYZ on a tight CV scale such as 0–1 with moderate-to-high velocity, X and Y would often justify different count schedules and the matrix would need to be retuned. The same stack also supports PAR levels, safety stock, and replenishment triggers.
 
 ---
 
@@ -17,7 +17,7 @@ ABC inventory classification is one of the most fundamental tools in supply chai
 - Classifies every product SKU into A, B, or C tiers based on revenue contribution using the Pareto principle
 - Generates PAR levels and replenishment thresholds with automated reorder flags
 - Calculates safety stock using demand volatility and supplier lead time variance
-- Produces a cycle counting program by ABC tier
+- Produces a cycle counting program from the combined ABC XYZ matrix (frequency by revenue tier × demand variability), implemented as `DimProduct[Cycle Count Schedule]`
 - Flags potential stockout risk early
 - Provides an executive summary with key findings and actionable recommendations
 
@@ -43,12 +43,12 @@ ABC inventory classification is one of the most fundamental tools in supply chai
 
 **1. Get the Phase 1 snapshot (ETL milestone)**
 
-- Open: [Phase 1 - ETL Data Preparation Layer](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer).
+- Open: [Phase 1 - ETL Data Preparation Layer](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer).
 - Under **Assets**, download **`ABC_Product_Segmentation_Inventory_Management_phase_1_etl_layer.pbix`**.
 
 **2. Get the Phase 2 snapshot (model layer)**
 
-- Open: [Phase 2 - Model Layer](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer).
+- Open: [Phase 2 - Model Layer](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/releases/tag/phase-2-model-layer).
 - Under **Assets**, download **`ABC_Product_Segmentation_Inventory_Management_phase_2_model_layer.pbix`**.
 
 **3. Open and explore**
@@ -128,8 +128,8 @@ See **`decision-log.md`** for the full log through **Phase 1 (ETL)** and **Phase
 
 | Phase | Status | Development & Milestone (dev branch → PBIX GitHub Release) |
 |---|---|---|
-| Phase 1 - ETL Data Preparation Layer | ✅ Complete | Developed on [`etl-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/etl-layer). PBIX: [Phase 1 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer). |
-| Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 Release](https://github.com/howardchungnyc/abc-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
+| Phase 1 - ETL Data Preparation Layer | ✅ Complete | Developed on [`etl-layer`](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/tree/etl-layer). PBIX: [Phase 1 Release](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer). |
+| Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 Release](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
 | Phase 3 - DAX Measures Layer | 🔄 In Progress | Develop on `dax-layer` (branch for development only). When complete, PBIX published as GitHub Release. |
 | Phase 4 - Page 1 Visuals | ⬜ Pending | Develop on `page-1-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
 | Phase 5 - Page 2 Visuals | ⬜ Pending | Develop on `page-2-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
