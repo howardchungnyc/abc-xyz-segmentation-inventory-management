@@ -1,6 +1,6 @@
 # Decision Log
 
-## ABC Product Segmentation & Inventory Management
+## ABC XYZ Inventory Segmentation & Management
 
 ### Power BI Project — Phases 1–3 (ETL + Model Layer + DAX Layer)
 
@@ -340,7 +340,9 @@ That two-grain fact pattern is standard in enterprise-scale order domains when b
 Run a short set of automated tests in the model: row totals, order-date range, and every order row links to a real customer and product (no orphan keys).
 
 **Organization:**
-Seven validation measures live in `FactOrders` under the `_Validation` display folder. The folder name starts with `_` so it sorts to the top of the field list and reads as infrastructure, not business reporting.
+Validation measures live in `FactOrders` under the `_Validation` display folder. The folder name starts with `_` so it sorts to the top of the field list and reads as infrastructure, not business reporting.
+
+**Scope note:** Entry #14 reflects the **Phase 2** validation suite only — the seven tests in the table below and their measures. Phase 3 added many more `_Validation` measures. The **authoritative** list of measures and folder structure is `dax-measures.md`; use that file for current inventory, not the "seven measures" wording from the original write-up.
 
 **Tests and Results:**
 
@@ -438,7 +440,7 @@ Products with zero or blank revenue in the trailing window are flagged as **Inac
 **Two-Measure Pattern:**
 `Revenue by SKU (12-Month Trailing)` is a helper measure with locked context `ALL(DimDate)` and `ALL(DimCustomer)` removed so inventory classification reflects total demand. `[Total Revenue]` remains the general-purpose analytical measure respecting all filter context.
 
-**ABC/XYZ Decoupling:**
+**ABC XYZ Decoupling:**
 ABC and XYZ answer different questions and must drive different outputs. Conflating them produces incorrect reorder quantities, e.g. a high-price slow-mover classified A-tier by revenue needs a larger safety stock buffer, not more frequent orders.
 
 | Dimension | Question                            | Outputs                                       |
@@ -644,24 +646,29 @@ In production, `Simulated Inventory Level` is replaced by a live WMS/ERP on-hand
 
 ---
 
-## Entry #22 — Cycle Count Schedule: ABC/XYZ Combined Matrix
+## Entry #22 — Cycle Count Schedule: ABC XYZ Combined Matrix
 
 **Date:** March 2026  
 
 **Layer:** Calculated column — `DimProduct[Cycle Count Schedule]`
 
 **Decision:**
-Implement cycle count frequency as a calculated column in `DimProduct` using the combined ABC/XYZ matrix. Cycle count frequency is proportional to both revenue contribution (ABC) and demand variability (XYZ).
+Implement cycle count frequency as a calculated column in `DimProduct` using the combined ABC XYZ matrix. Cycle count frequency is proportional to both revenue contribution (ABC) and demand variability (XYZ).
 
 **Rationale:**  
 Cycle counting is one of the most operationally tangible outputs of inventory segmentation. The combined matrix operationalizes both classification dimensions simultaneously. ABC tells you how costly an inventory error would be; XYZ tells you how likely a discrepancy is to exist.
 
-**Why Combined ABC/XYZ Matrix Over ABC-Only:**
+**Why Combined ABC XYZ Matrix Over ABC-Only:**
 ABC-only cycle counting (count A-items most frequently) is the baseline standard. Adding XYZ increases precision. Erratic demand SKUs are more likely to have system-to-physical discrepancies because unpredictable consumption creates more opportunities for unrecorded variance. An AZ product (high revenue, erratic demand) warrants weekly counting due to maximum revenue exposure combined with maximum discrepancy probability. A CX product (low revenue, stable demand) warrants semi-annual counting considering low cost of error and low probability of discrepancy.
 
 Source: APICS CPIM Body of Knowledge recommends cycle count frequency proportional to revenue contribution and demand variability.
 
-**ABC/XYZ Cycle Count Matrix:**
+**Why X and Y Share the Same Count Frequency at Every ABC Tier:**
+Standard XYZ thresholds assume moderate-to-high velocity demand where a CV of 0.8 represents a meaningful absolute swing in daily units. This catalog does not fit that profile -- 81% of SKUs sell less than 1 unit per day. At near-zero average demand, CV is mathematically inflated regardless of actual behavioral variability, and standard thresholds would classify approximately 95% of the catalog as Z (see Entry #20).
+
+Thresholds were set at the 25th and 75th percentiles of this catalog's actual CV distribution instead: X at or below 3.96, Y between 3.96 and 10.91, Z above 10.91. Within that structure, the absolute unit volume difference between an X and Y SKU in this catalog is too small to produce meaningfully different discrepancy accumulation or detection risk. Z is the operationally significant threshold -- where CV exceeds 10.91 and movement is genuinely erratic at whatever velocity the SKU carries. X/Y parity is a data-derived conclusion, not a simplification.
+
+**ABC XYZ Cycle Count Matrix:**
 
 |                           | X (Stable, CV ≤ 3.96) | Y (Moderate, CV 3.96–10.91) | Z (Erratic, CV > 10.91) |
 | ------------------------- | --------------------- | --------------------------- | ----------------------- |
@@ -681,7 +688,7 @@ Source: APICS CPIM Body of Knowledge recommends cycle count frequency proportion
 | Inactive    | Annual      | Outside active classification scope - annual physical audit sufficient                                       |
 
 **Implementation:**  
-The DAX `Cycle Count` concatenates `ABC Tier (Classification)` and `XYZ Classification (DimColumn)` column values into a matrix key ("AX", "BZ", etc.) and uses `SWITCH` to return the frequency label. Updates automatically on model refresh when tier assignments change.
+The DAX calculated column `Cycle Count Schedule` concatenates `ABC Tier (Classification)` and `XYZ Classification (DimColumn)` into a matrix key ("AX", "BZ", etc.) and uses `SWITCH` to return the frequency label. Updates automatically on model refresh when tier assignments change.
 
 ---
 
@@ -699,6 +706,6 @@ The DAX `Cycle Count` concatenates `ABC Tier (Classification)` and `XYZ Classifi
 
 ---
 
-*Document Version: 2.3 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
-*Phase 3 Entries #16–#22: QA pages, display folder naming, ABC/XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
+*Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
+*Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
 *Next Update: Phase 3 completion — Financial Impact and Trend Analysis measures*
