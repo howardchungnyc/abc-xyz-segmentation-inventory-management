@@ -1,14 +1,14 @@
-# ABC XYZ Inventory Segmentation & Management
+# ABC/XYZ Inventory Segmentation & Management
 
 ## Business Problem
 
-A Power BI solution built on the DataCo Smart Supply Chain dataset. It addresses questions warehouse and distribution operations ask every day: which SKUs drive revenue, what to cycle count first, where to hold safety stock, and when late shipments point to higher stockout risk. Those answers live in one standard report everyone can use, not scattered spreadsheets or undocumented know-how held only by select individuals. **ABC** tiers rank SKUs by revenue contribution (Pareto); **XYZ** classifies demand predictability from coefficient of variation. Together they drive segmentation, replenishment logic, and risk signals. The Power BI report links this ABC XYZ classification system to a combined cycle count matrix and replenishment planning, and flags stockout risk earlier.
+A Power BI solution built on the DataCo Smart Supply Chain dataset. It addresses questions warehouse and distribution operations ask every day: which SKUs drive revenue, what to cycle count first, where to hold safety stock, and when late shipments point to higher stockout risk. Those answers live in one standard report everyone can use, not scattered spreadsheets or undocumented know-how held only by select individuals. ABC tiers rank SKUs by revenue contribution (Pareto); XYZ classifies demand predictability from coefficient of variation. Together they drive segmentation, replenishment logic, and risk signals. The Power BI report links this ABC/XYZ classification system to a combined cycle count matrix and replenishment planning, and flags stockout risk earlier.
 
 ---
 
 ## Background
 
-ABC XYZ inventory classification is one of the most fundamental tools in supply chain operations. In practice it's often done manually, inconsistently, and stored entirely in someone's head. This project systematizes that process by tying ABC (revenue tier, Pareto concentration) and XYZ (demand variability from coefficient of variation) to the same analytics stack: cycle count cadence follows the combined ABC XYZ matrix (each SKU is a pair such as AX or BZ). In this dataset, X and Y share the same count frequency at every ABC tier because XYZ breakpoints are set from this catalog’s CV percentiles and low average daily demand makes a finer X vs Y split redundant except at the Z threshold (see [`decision-log_v3.0.md`](./decision-log_v3.0.md) Entry #22). Under a different population, e.g. textbook XYZ on a tight CV scale such as 0–1 with moderate-to-high velocity, X and Y would often justify different count schedules and the matrix would need to be retuned. The same stack also supports PAR levels, safety stock, and replenishment triggers.
+ABC/XYZ inventory classification is one of the most fundamental tools in supply chain operations. In practice it's often done manually, inconsistently, and stored entirely in someone's head. This project systematizes that process by tying ABC (revenue tier, Pareto concentration) and XYZ (demand variability from coefficient of variation) to the same analytics stack: cycle count cadence follows the combined ABC/XYZ matrix (each SKU is a pair such as AX or BZ). In this dataset, X and Y share the same count frequency at every ABC tier because XYZ breakpoints are set from this catalog’s CV percentiles and low average daily demand makes a finer X vs Y split redundant except at the Z threshold (see [`decision-log.md`](./decision-log.md) Entry #22). Under a different population, e.g. textbook XYZ on a tight CV scale such as 0–1 with moderate-to-high velocity, X and Y would often justify different count schedules and the matrix would need to be retuned. The same stack also supports PAR levels, safety stock, and replenishment triggers.
 
 ---
 
@@ -75,7 +75,7 @@ and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`).
 `Order Date` is the active date relationship; `Shipping Date` inactive 
 (activated via `USERELATIONSHIP` in DAX).
 
-→ Full architectural decisions and rationale: [`decision-log_v3.0.md`](./decision-log_v3.0.md)
+→ Full architectural decisions and rationale: [`decision-log.md`](./decision-log.md)
 
 ### Model Relationships (Star Schema)
 
@@ -116,7 +116,7 @@ and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`).
 | File | Description |
 |---|---|
 | `README.md` | Project summary, report structure, download links, and business purpose |
-| [`decision-log_v3.0.md`](./decision-log_v3.0.md) | Architectural and analytical decisions with reasoning through **Phase 3 (DAX)**, Entries #1–#22 |
+| [`decision-log.md`](./decision-log.md) | Architectural and analytical decisions with reasoning through **Phase 3 (DAX)**, Entries #1–#22 |
 | [`dax-measures.md`](./dax-measures.md) | DAX measures reference: display-folder tree, measure/column DAX, build order, ABC·XYZ cycle count matrix (aligned with the model) |
 | [`abc-xyz-cycle-count-framework.html`](./abc-xyz-cycle-count-framework.html) | One-page web reference for the combined ABC/XYZ cycle count matrix (count schedule and three-lens narrative) |
 | `column-definition.md` | Complete data dictionary — source to model column mapping |
