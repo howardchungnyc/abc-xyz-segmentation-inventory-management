@@ -55,6 +55,8 @@ FactOrders
 │   ├── _Validation
 │   │   ├── Blank Customer Check
 │   │   ├── Blank Product Check
+│   │   ├── Canceled Line Items
+│   │   ├── Canceled Order Units
 │   │   ├── Customer Match Check
 │   │   ├── CV 25th Percentile
 │   │   ├── CV 50th Percentile
@@ -63,6 +65,8 @@ FactOrders
 │   │   ├── Delivery Status Row Count
 │   │   ├── Earliest Order Date
 │   │   ├── Latest Order Date
+│   │   ├── Orders With Canceled Lines
+│   │   ├── Orders With Mixed Lines
 │   │   ├── Product Match Check
 │   │   ├── Row Count Integrity
 │   │   ├── SKU Count - A Tier
@@ -613,9 +617,131 @@ RETURN
 
 ---
 
+### Canceled Line Items
+
+**Purpose:** Confirms count of canceled order line items in the dataset. Validates the 7,754 figure used in Entry #23 canceled order exclusion decision.
+**Report Page:** QA - Model Validation
+
+**Expected:** 7,754<br>
+**Validated:** 7,754 ✅
+
+```dax
+Canceled Line Items =
+-- Count of FactOrders rows with Delivery Status = "Shipping canceled".
+-- Validates the canceled row count used in Entry #23.
+-- Expected: 7,754 -- matches validated delivery status distribution.
+
+CALCULATE(
+    COUNTROWS(FactOrders),
+    FactOrders[Delivery Status] = "Shipping canceled"
+)
+```
+
+**Notes:**
+- Must equal 7,754. Any deviation signals a data load or ETL issue.
+- Cross-reference with Delivery Status Row Count — Canceled Line Items + non-canceled rows must equal 180,519.
+- See Entry #23.
+
+---
+
+### Canceled Order Units
+
+**Purpose:** Confirms total units carried by canceled orders. Validates the 16,488 figure used in Entry #23. Confirms that excluding canceled orders meaningfully reduces unit totals used in demand calculations.
+**Report Page:** QA - Model Validation
+
+**Expected:** 16,488<br>
+**Validated:** 16,488 ✅
+
+```dax
+Canceled Order Units =
+-- Total Order Quantity units in canceled rows.
+-- Validates the unit overstatement finding in Entry #23.
+-- Expected: 16,488.
+
+CALCULATE(
+    SUM(FactOrders[Order Quantity]),
+    FactOrders[Delivery Status] = "Shipping canceled"
+)
+```
+
+**Notes:**
+- Must equal 16,488. Confirms canceled orders carry meaningful unit values.
+- If this returns 0 or BLANK, canceled orders carry no units and the exclusion has no impact on demand measures.
+- See Entry #23.
+
+---
+
+### Orders With Canceled Lines
+
+**Purpose:** Count of distinct orders containing at least one canceled line item. Used with Orders With Mixed Lines to confirm grain of canceled order exclusion.
+**Report Page:** QA - Model Validation
+
+**Expected:** 2,855<br>
+**Validated:** 2,855 ✅
+
+```dax
+Orders With Canceled Lines =
+-- Count of distinct Order IDs that have at least one Shipping canceled line.
+-- Used alongside Orders With Mixed Lines to confirm exclusion grain.
+-- Expected: 2,855.
+
+CALCULATE(
+    DISTINCTCOUNT(FactOrders[Order Id]),
+    FactOrders[Delivery Status] = "Shipping canceled"
+)
+```
+
+**Notes:**
+- Must equal 2,855.
+- 2,855 canceled orders × average 2.7 lines per order = 7,754 canceled line items. Consistent.
+- See Entry #23.
+
+---
+
+### Orders With Mixed Lines
+
+**Purpose:** Confirms no orders have both canceled and non-canceled line items. Validates that line-item grain exclusion and order-level exclusion produce identical results.
+**Report Page:** QA - Model Validation
+
+**Expected:** 0<br>
+**Validated:** 0 ✅
+
+```dax
+Orders With Mixed Lines =
+-- Count of orders containing BOTH canceled and non-canceled lines.
+-- Must equal 0 to confirm line-item and order-level exclusion are equivalent.
+-- If non-zero, split orders exist and exclusion logic must be reviewed.
+-- See Entry #23.
+
+CALCULATE(
+    DISTINCTCOUNT(FactOrders[Order Id]),
+    FactOrders[Delivery Status] = "Shipping canceled"
+) -
+CALCULATE(
+    DISTINCTCOUNT(FactOrders[Order Id]),
+    FILTER(
+        VALUES(FactOrders[Order Id]),
+        CALCULATE(
+            COUNTROWS(FactOrders),
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        ) = 0
+    )
+)
+```
+
+**Notes:**
+- Must equal 0. Non-zero means split orders exist — some orders have both canceled and fulfilled lines. In that case line-item exclusion and order-level exclusion produce different results and the exclusion design must be revisited.
+- Validated 0 across all customer states. See Entry #23.
+
+---
+
 ## \_Measures\Core Measures
 
 Six base measures that all downstream calculations depend on. Build these first.
+
+All five aggregation measures exclude canceled orders using `KEEPFILTERS(Delivery Status <> "Shipping canceled")`. KEEPFILTERS intersects the exclusion with existing slicer context rather than replacing it — slicer responsiveness is preserved. Canceled orders were never fulfilled — including them overstates revenue, units, profit, and order counts. Validated: 7,754 canceled rows carrying 16,488 units across the dataset. See [decision-log.md](./decision-log.md) Entry #23.
+
+`Avg Order Value` cascades automatically from `[Total Revenue]` and `[Total Orders]` — no DAX changes needed.
 
 **Folder name:** Core Measures — signals base layer without implying a supply chain function. Previously named "Foundation." See [decision-log.md](./decision-log.md) Entry #16.
 
@@ -627,11 +753,6 @@ Six base measures that all downstream calculations depend on. Build these first.
 **Format:** Currency, 2 decimal places<br>
 **Dependencies:** `[Total Revenue]`, `[Total Orders]`<br>
 
-**Expected:**
-**Actual:**
-**Status:**
-
-**DAX:**
 ```dax
 Avg Order Value = 
 DIVIDE(
@@ -640,11 +761,11 @@ DIVIDE(
 )
 ```
 
-**Description:** Average revenue per customer order in the selected period.
+**Description:** Average revenue per fulfilled customer order in the selected period.
 
 **Notes:**
 - `DIVIDE` used instead of `/` — handles division by zero gracefully.
-- Validated: $36,784,734.31 ÷ 65,752 = $559.45 unfiltered.
+- Inherits canceled order exclusion from `[Total Revenue]` and `[Total Orders]`. No DAX changes needed.
 
 ---
 
@@ -652,20 +773,26 @@ DIVIDE(
 
 **Table:** FactOrders<br>
 **Format:** Percentage, 2 decimal places<br>
-**Dependencies:** `FactOrders[Profit Ratio]`<br>
+**Dependencies:** `FactOrders[Profit Ratio]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Avg Profit Margin % = 
-AVERAGE(FactOrders[Profit Ratio])
+Avg Profit Margin % =
+-- Average gross profit margin across fulfilled order line items.
+-- Canceled orders excluded -- never fulfilled.
+-- KEEPFILTERS preserves slicer responsiveness. See Entry #23.
+
+CALCULATE(
+    AVERAGE(FactOrders[Profit Ratio]),
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
 ```
 
-**Description:** Average gross profit margin across all order line items in the selected period.
+**Description:** Average gross profit margin across fulfilled order line items in the selected period.
 
 **Notes:**
 - `Profit Ratio` is a raw 0–1 decimal field in FactOrders. Format set to Percentage in model properties — no multiplication by 100 in DAX.
 - Total row recalculates across all rows directly — not an average of averages.
-- Validated: 12.06% unfiltered. Varies meaningfully by department.
+- Canceled orders excluded. See Entry #23.
 
 ---
 
@@ -673,19 +800,26 @@ AVERAGE(FactOrders[Profit Ratio])
 
 **Table:** FactOrders<br>
 **Format:** Currency, 2 decimal places<br>
-**Dependencies:** `FactOrders[Order Gross Profit]`<br>
+**Dependencies:** `FactOrders[Order Gross Profit]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Total Gross Profit = 
-SUM(FactOrders[Order Gross Profit])
+Total Gross Profit =
+-- Total gross profit across fulfilled order line items.
+-- Canceled orders excluded -- never fulfilled, overstate profit if included.
+-- KEEPFILTERS preserves slicer responsiveness. See Entry #23.
+
+CALCULATE(
+    SUM(FactOrders[Order Gross Profit]),
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
 ```
 
-**Description:** Total gross profit across all order line items in the selected period.
+**Description:** Total gross profit across fulfilled order line items in the selected period.
 
 **Notes:**
 - Enables implied COGS calculation per Limitation #2: `Implied COGS = [Total Revenue] - [Total Gross Profit]`.
 - `Order Gross Profit` is a translation artifact from source Spanish column "beneficio" — confirmed as gross profit per ETL documentation.
+- Canceled orders excluded. See Entry #23.
 
 ---
 
@@ -693,19 +827,27 @@ SUM(FactOrders[Order Gross Profit])
 
 **Table:** FactOrders<br>
 **Format:** Whole number, comma separator<br>
-**Dependencies:** `FactOrders[Order Id]`<br>
+**Dependencies:** `FactOrders[Order Id]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Total Orders = 
-DISTINCTCOUNT(FactOrders[Order Id])
+Total Orders =
+-- Count of distinct fulfilled customer orders.
+-- Canceled orders excluded -- never fulfilled.
+-- Validated: 0 orders have mixed canceled and non-canceled lines.
+-- KEEPFILTERS preserves slicer responsiveness. See Entry #23.
+
+CALCULATE(
+    DISTINCTCOUNT(FactOrders[Order Id]),
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
 ```
 
-**Description:** Total number of distinct customer orders in the selected period.
+**Description:** Total number of distinct fulfilled customer orders in the selected period.
 
 **Notes:**
-- Uses `DISTINCTCOUNT` not `COUNTROWS`. FactOrders is at line-item grain — 180,519 rows, 65,752 distinct orders. See [decision-log.md](./decision-log.md) Entry #13.
-- Validated: 65,752 unfiltered.
+- Uses `DISTINCTCOUNT` not `COUNTROWS`. FactOrders is at line-item grain. See [decision-log.md](./decision-log.md) Entry #13.
+- Validated: 0 orders have mixed canceled and non-canceled lines — line-item exclusion correctly excludes all 2,855 canceled orders. See Entry #23.
+- Canceled orders excluded. See Entry #23.
 
 ---
 
@@ -713,19 +855,27 @@ DISTINCTCOUNT(FactOrders[Order Id])
 
 **Table:** FactOrders<br>
 **Format:** Currency, 2 decimal places<br>
-**Dependencies:** `FactOrders[Sales]`<br>
+**Dependencies:** `FactOrders[Sales]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Total Revenue = 
-SUM(FactOrders[Sales])
+Total Revenue =
+-- Total sales revenue across fulfilled order line items.
+-- Canceled orders excluded -- never fulfilled, overstate revenue if included.
+-- Base revenue measure. All downstream revenue calculations reference this.
+-- KEEPFILTERS preserves slicer responsiveness. See Entry #23.
+
+CALCULATE(
+    SUM(FactOrders[Sales]),
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
 ```
 
-**Description:** Total sales revenue across all order line items in the selected period.
+**Description:** Total sales revenue across fulfilled order line items in the selected period.
 
 **Notes:**
 - Base revenue measure — do not modify. All downstream revenue calculations reference this.
 - Respects all slicer and filter context. For locked classification revenue, use `[Revenue by SKU (12-Month Trailing)]`.
+- Canceled orders excluded. See Entry #23.
 
 ---
 
@@ -733,15 +883,25 @@ SUM(FactOrders[Sales])
 
 **Table:** FactOrders<br>
 **Format:** Whole number, comma separator<br>
-**Dependencies:** `FactOrders[Order Quantity]`<br>
+**Dependencies:** `FactOrders[Order Quantity]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Total Units Sold = 
-SUM(FactOrders[Order Quantity])
+Total Units Sold =
+-- Total units across fulfilled order line items.
+-- Canceled orders excluded -- 16,488 canceled units confirmed in dataset.
+-- Including them overstates demand used in inventory planning calculations.
+-- KEEPFILTERS preserves slicer responsiveness. See Entry #23.
+
+CALCULATE(
+    SUM(FactOrders[Order Quantity]),
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
 ```
 
-**Description:** Total units ordered across all order line items in the selected period.
+**Description:** Total fulfilled units across all order line items in the selected period.
+
+**Notes:**
+- Canceled orders excluded. 16,488 canceled units confirmed in dataset. See Entry #23.
 
 ---
 
@@ -1738,14 +1898,11 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.1 — Phase 3 DAX Layer (updated)*<br>
-*Changes from v1.0:*
-- *Display folder names updated to APICS/SCOR aligned labels (Entry #16)*
-- *XYZ Classification thresholds updated to data-driven percentile values (3.96/10.91) from assumed constants (0.5/1.0) (Entry #17)*
-- *New measures added: CV percentiles, SKU Count - X/Y/Z, SKU Count by Velocity Band (deprecated)*
-- *Demand Velocity Band and SKU Count by Velocity Band moved to \_Deprecated*
-- *Cycle Count Schedule calculated column added to DimProduct*
-- *Financial Impact and Trend Analysis sections added (pending)*
-- *Grain constraint documentation added to Inventory Planning section*
-- *ABC XYZ Cycle Count Schedule reference table added*<br>
-*Next Update: Phase 3 completion — Financial Impact and Trend Analysis measures*
+*Document Version: 1.2 — Phase 3 DAX Layer (Core Measures canceled order exclusion)*<br>
+*Changes from v1.1:*
+- *Core Measures: canceled order exclusion added using KEEPFILTERS to Total Revenue, Total Gross Profit, Total Units Sold, Total Orders, Avg Profit Margin % (Entry #23)*
+- *KEEPFILTERS used throughout: intersects canceled order exclusion with existing slicer context rather than replacing it — slicer responsiveness preserved*
+- *Avg Order Value cascades automatically — no DAX changes*
+- *\_Validation: four new measures added to document and reproduce canceled order findings — Canceled Line Items, Canceled Order Units, Orders With Canceled Lines, Orders With Mixed Lines (Entry #23)*
+- *Validated: 7,754 canceled rows, 16,488 canceled units, 2,855 canceled orders, 0 mixed-line orders*<br>
+*Next Update: Supply Performance and Inventory Planning canceled order exclusion*

@@ -703,9 +703,57 @@ The DAX calculated column `Cycle Count Schedule` concatenates `ABC Tier (Classif
 | 5   | Single flat file source. No supplier dimension                                      | Cannot segment lead time by supplier                                                                                        | Shipping Mode used as a substitute                                                                                                                                                                                                                                                                              |
 | 6   | Late delivery rate of 57.3% in source data                                          | Elevated rate may concern report consumers                                                                                  | Reflects actual DataCo dataset characteristics (not a measure error). Documented on QA page                                                                                                                                                                                                                     |
 | 7   | Continuous review replenishment model applied to predominantly slow-moving products | Suggested reorder quantities are too small to differentiate meaningfully between tiers for 81% of SKUs selling < 1 unit/day | Use as directional starting reference. Periodic review is the production-grade solution for slow movers. Target days (60/45/30) are industry standard starting points, not data-derived from cost structure. Full optimization requires actual holding cost and ordering cost per SKU. Documented in Entry #20. |
+| 8   | No Shipped Quantity column in source data | In Full component of OTIF cannot be independently measured | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace left `FactOrders[Order Quantity]` in the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #24. |
+
+---
+
+## Entry #23 — Core Measures: Canceled Order Exclusion
+
+**Date:** April 2026
+**Layer:** DAX Layer — Core Measures folder (FactOrders)
+
+### Finding: Canceled Orders Carrying Revenue and Unit Values
+
+Validation confirmed 7,754 rows with `Delivery Status = "Shipping canceled"` carry non-zero values: 16,488 canceled units and $1,570,305.33 in canceled revenue across the dataset. The base model included these in all Core Measures aggregations — overstating Total Revenue, Total Gross Profit, Total Units Sold, Total Orders, and Avg Profit Margin %.
+
+Four permanent validation measures added to `_Validation` to document and reproduce these findings: `Canceled Line Items` (expected 7,754), `Canceled Order Units` (expected 16,488), `Orders With Canceled Lines` (expected 2,855), `Orders With Mixed Lines` (expected 0). Any reviewer cloning the repo can refresh and verify these figures independently.
+
+### Finding: Delivery Status is the Correct Exclusion Filter
+
+`Delivery Status = "Shipping canceled"` is the correct and complete exclusion filter. It catches CANCELED, SUSPECTED_FRAUD, and any other Order Status that was never fulfilled. Validation confirmed: COUNTROWS(FILTER(FactOrders, Order Status = "CANCELED" && Delivery Status <> "Shipping canceled")) returned BLANK — all CANCELED order status rows have Delivery Status = "Shipping canceled". Using Order Status alone would miss rows.
+
+### Finding: No Mixed-Line Orders
+
+Orders With Mixed Lines returned 0. Every order is either fully canceled or fully fulfilled. Line-item-level exclusion at FactOrders grain correctly excludes all 2,855 canceled orders and their 7,754 line items.
+
+### Decision: Exclude Canceled Orders from All Core Measures
+
+Canceled orders were never fulfilled. Including them represents ordered value not fulfilled value — operationally inaccurate and not aligned with inventory planning intent.
+
+Five measures updated: `Total Revenue`, `Total Gross Profit`, `Total Units Sold`, `Total Orders`, `Avg Profit Margin %`. `Avg Order Value` cascades automatically from Total Revenue and Total Orders — no DAX changes required.
+
+### KEEPFILTERS: Preserving Slicer Responsiveness
+
+Initial implementation used `CALCULATE(..., FactOrders[Delivery Status] <> "Shipping canceled")` directly. This broke slicer responsiveness. When a Delivery Status slicer is active, CALCULATE replaces the existing filter context on that column entirely — the slicer is ignored.
+
+Fix: `KEEPFILTERS` wraps the exclusion condition in all CALCULATE blocks:
+
+```dax
+CALCULATE(
+    SUM(FactOrders[Sales]),
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
+```
+
+KEEPFILTERS intersects the new condition with existing context rather than replacing it. With a "Late delivery" slicer active, the result is `Late delivery AND not Shipping canceled = Late delivery only` — slicer respected, canceled orders excluded. With a "Shipping canceled" slicer, the intersection is empty — returns BLANK, which is correct.
+
+### Downstream Cascade
+
+`Revenue by SKU (12-Month Trailing)` calls `[Total Revenue]` inside a CALCULATE that only modifies DimDate and DimCustomer context. KEEPFILTERS on Delivery Status persists through nested CALCULATE calls — canceled orders are automatically excluded from the trailing window calculation and all dependent measures: ABC tier assignments, SKU revenue ranking, cumulative revenue %, XYZ classification, safety stock, and all replenishment measures.
 
 ---
 
 *Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
 *Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
-*Next Update: Phase 3 completion — Financial Impact and Trend Analysis measures*
+*Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
+*Next Update: Supply Performance and Inventory Planning canceled order exclusion*
