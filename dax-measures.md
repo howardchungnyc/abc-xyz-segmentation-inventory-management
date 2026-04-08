@@ -1458,7 +1458,9 @@ IF(
 
 ## \_Measures\Supply Performance
 
-All six measures exclude canceled orders (`Delivery Status <> "Shipping canceled"`). Canceled orders never shipped — including them distorts lead time averages and inflates on-time rate. See [decision-log.md](./decision-log.md) Entry #19.
+All six measures exclude canceled orders using `KEEPFILTERS(Delivery Status <> "Shipping canceled")` inside their RETURN CALCULATE blocks. KEEPFILTERS intersects the exclusion with existing slicer context rather than replacing it — slicer responsiveness is preserved. See [decision-log.md](./decision-log.md) Entry #24.
+
+All six measures also include a row-grain guard using `NonCanceledCount` via `FILTER`. The FILTER-based guard uses a plain condition (not KEEPFILTERS) because FILTER already respects existing context without overriding it. See [decision-log.md](./decision-log.md) Entry #24.
 
 **Folder name:** Supply Performance — aligned with SCOR Source domain terminology. Previously named "Lead Time & Reliability." See [decision-log.md](./decision-log.md) Entry #16.
 
@@ -1481,21 +1483,43 @@ Non-canceled orders used in calculations: 172,765.
 **Format:** Decimal number, 2 decimal places<br>
 **Dependencies:** `FactOrders[Shipping Days (Actual)]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Avg Lead Time (Actual) = 
-CALCULATE(
-    AVERAGE(FactOrders[Shipping Days (Actual)]),
-    FactOrders[Delivery Status] <> "Shipping canceled"
-)
+Avg Lead Time (Actual) =
+-- Average actual days from order placement to delivery.
+-- Canceled orders excluded -- they never shipped, no delivery performance exists.
+--
+-- Row-grain guard: NonCanceledCount uses FILTER not CALCULATE.
+-- CALCULATE overrides existing Delivery Status filter context.
+-- At row grain in a canceled-only context, CALCULATE escapes and computes
+-- across all non-canceled orders, returning a misleading average.
+-- FILTER respects existing context. Returns BLANK when no non-canceled
+-- rows exist in context. See Entry #24.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        CALCULATE(
+            AVERAGE(FactOrders[Shipping Days (Actual)]),
+            KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+        )
+    )
 ```
 
 **Description:** Average actual days from order placement to delivery, excluding canceled orders.
 
 **Notes:**
-- Unit: days.
-- Validated total: 3.50 days.
+- Unit: days. Validated total: 3.50 days.
 - Primary lead time input to Safety Stock formula.
+- `NonCanceledCount` guard prevents misleading average from appearing when canceled-only context is active. See Entry #24.
 
 ---
 
@@ -1505,19 +1529,37 @@ CALCULATE(
 **Format:** Decimal number, 2 decimal places<br>
 **Dependencies:** `FactOrders[Shipping Days (Scheduled)]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Avg Lead Time (Scheduled) = 
-CALCULATE(
-    AVERAGE(FactOrders[Shipping Days (Scheduled)]),
-    FactOrders[Delivery Status] <> "Shipping canceled"
-)
+Avg Lead Time (Scheduled) =
+-- Average promised lead time at order placement.
+-- Canceled orders excluded -- scheduled date is irrelevant if order never shipped.
+--
+-- Row-grain guard: same FILTER pattern as Avg Lead Time (Actual). See Entry #24.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        CALCULATE(
+            AVERAGE(FactOrders[Shipping Days (Scheduled)]),
+            KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+        )
+    )
 ```
 
 **Description:** Average promised lead time at order placement, excluding canceled orders.
 
 **Notes:**
 - Unit: days. Validated total: 2.93 days.
+- `NonCanceledCount` guard applied for consistency. See Entry #24.
 
 ---
 
@@ -1527,19 +1569,37 @@ CALCULATE(
 **Format:** Decimal number, 2 decimal places<br>
 **Dependencies:** `FactOrders[Lead Time Variance]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Avg Lead Time Variance = 
-CALCULATE(
-    AVERAGE(FactOrders[Lead Time Variance]),
-    FactOrders[Delivery Status] <> "Shipping canceled"
-)
+Avg Lead Time Variance =
+-- Average days by which actual delivery exceeded scheduled delivery.
+-- Positive = late on average. Canceled orders excluded.
+--
+-- Row-grain guard: same FILTER pattern as Avg Lead Time (Actual). See Entry #24.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        CALCULATE(
+            AVERAGE(FactOrders[Lead Time Variance]),
+            KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+        )
+    )
 ```
 
 **Description:** Average days by which actual delivery exceeded scheduled delivery. Positive = late on average.
 
 **Notes:**
 - Unit: days. Validated total: 0.57 days — orders are systematically late by over half a day on average.
+- `NonCanceledCount` guard applied for consistency. See Entry #24.
 
 ---
 
@@ -1549,20 +1609,55 @@ CALCULATE(
 **Format:** Percentage, 2 decimal places<br>
 **Dependencies:** `FactOrders[Late Delivery Risk]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Late Delivery Rate % = 
-CALCULATE(
-    AVERAGE(FactOrders[Late Delivery Risk]),
-    FactOrders[Delivery Status] <> "Shipping canceled"
-)
+Late Delivery Rate % =
+-- Proportion of non-canceled orders that arrived later than scheduled.
+-- Late Delivery Risk is a 0/1 column derived in Power Query from Lead Time Variance > 0.
+-- Formula: Late orders / Total non-canceled orders.
+-- Count-based pattern -- consistent with OTIF % formula structure.
+-- AVERAGE of a 0/1 field produces the same result but obscures the formula intent.
+--
+-- Row-grain guard: NonCanceledCount uses FILTER not CALCULATE.
+-- FILTER respects existing context. Returns BLANK when no non-canceled
+-- rows exist in context. See Entry #24.
+--
+-- Filter string: "Shipping canceled" -- the exact value in the dataset.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+-- Count orders where Late Delivery Risk = 1 (arrived after scheduled date).
+VAR LateOrders =
+    CALCULATE(
+        COUNTROWS(FactOrders),
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled"),
+        FactOrders[Late Delivery Risk] = 1
+    )
+
+-- Total non-canceled orders -- the denominator.
+VAR TotalOrders =
+    CALCULATE(
+        COUNTROWS(FactOrders),
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        DIVIDE(LateOrders, TotalOrders)
+    )
 ```
 
 **Description:** Proportion of non-canceled orders that arrived later than scheduled.
 
 **Notes:**
-- `Late Delivery Risk` is a 0/1 integer column. `AVERAGE` of a binary field equals the proportion of 1s — mathematically equivalent to a rate.
-- Validated total: 57.3%. High rate reflects DataCo dataset characteristics — not a measure error. See Limitation #6.
+- Count-based formula — consistent with OTIF % pattern. Validated total: 57.3%. High rate reflects DataCo dataset characteristics — not a measure error. See Limitation #6.
 - 98,977 late ÷ 172,765 non-canceled = 57.3%
 
 ---
@@ -1573,13 +1668,35 @@ CALCULATE(
 **Format:** Decimal number, 2 decimal places<br>
 **Dependencies:** `FactOrders[Lead Time Variance]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-Lead Time Variance Std Dev = 
-CALCULATE(
-    STDEV.P(FactOrders[Lead Time Variance]),
-    FactOrders[Delivery Status] <> "Shipping canceled"
-)
+Lead Time Variance Std Dev =
+-- Standard deviation of lead time variance across non-canceled orders.
+-- Measures how consistently late or early orders arrive.
+-- Higher value = more unpredictable fulfillment.
+-- Canceled orders excluded.
+--
+-- Row-grain guard: same FILTER pattern as Avg Lead Time (Actual). See Entry #24.
+-- Note: at true single-row grain, STDEV.P of one value returns 0, not BLANK.
+-- The guard prevents the more misleading case where a canceled-only context
+-- causes CALCULATE to escape and compute std dev across the full dataset.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        CALCULATE(
+            STDEV.P(FactOrders[Lead Time Variance]),
+            KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+        )
+    )
 ```
 
 **Description:** Standard deviation of lead time variance — measures how consistently late or early orders arrive. Higher value = more unpredictable fulfillment.
@@ -1588,6 +1705,7 @@ CALCULATE(
 - Unit: days. Validated total: 1.49 days.
 - `STDEV.P` used — 180,519 rows is the full population, not a sample. `STDEV.S` overstates variance.
 - Critical input to Safety Stock formula: `σ²_LT`. Squaring inside the formula converts standard deviation to variance.
+- At true single-row grain, `STDEV.P` of one value returns 0, not BLANK. Expected behavior. See Entry #24.
 
 ---
 
@@ -1595,19 +1713,55 @@ CALCULATE(
 
 **Table:** FactOrders<br>
 **Format:** Percentage, 2 decimal places<br>
-**Dependencies:** `[Late Delivery Rate %]`<br>
+**Dependencies:** `FactOrders[Late Delivery Risk]`, `FactOrders[Delivery Status]`<br>
 
-**DAX:**
 ```dax
-On-Time Delivery Rate % = 
-1 - [Late Delivery Rate %]
+On-Time Delivery Rate % =
+-- Proportion of non-canceled orders that arrived on time or early.
+-- Formula: On-time orders / Total non-canceled orders.
+-- Count-based pattern -- consistent with OTIF % and Late Delivery Rate % formula structure.
+--
+-- Cannot write 1 - [Late Delivery Rate %] and inherit the canceled guard.
+-- When Late Delivery Rate % returns BLANK for canceled rows,
+-- 1 - BLANK() = 1 - 0 = 100% in DAX. Arithmetic on BLANK treats it as 0.
+-- Explicit guard and independent calculation required. See Entry #24.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+-- Count orders where Late Delivery Risk = 0 (arrived on or before scheduled date).
+VAR OnTimeOrders =
+    CALCULATE(
+        COUNTROWS(FactOrders),
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled"),
+        FactOrders[Late Delivery Risk] = 0
+    )
+
+-- Total non-canceled orders -- the denominator.
+VAR TotalOrders =
+    CALCULATE(
+        COUNTROWS(FactOrders),
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        DIVIDE(OnTimeOrders, TotalOrders)
+    )
 ```
 
 **Description:** Proportion of non-canceled orders that arrived on time or early.
 
 **Notes:**
-- Inherits canceled order filter from `[Late Delivery Rate %]`. No redundant filter needed.
-- Validated total: 42.7%.
+- Count-based formula — consistent with Late Delivery Rate % and OTIF % pattern. Validated total: 42.7%.
+- Explicit guard required — `1 - BLANK()` evaluates to 100% in DAX, not BLANK. Arithmetic on BLANK treats it as 0. See Entry #24.
 
 ---
 
@@ -1898,11 +2052,10 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.2 — Phase 3 DAX Layer (Core Measures canceled order exclusion)*<br>
-*Changes from v1.1:*
-- *Core Measures: canceled order exclusion added using KEEPFILTERS to Total Revenue, Total Gross Profit, Total Units Sold, Total Orders, Avg Profit Margin % (Entry #23)*
-- *KEEPFILTERS used throughout: intersects canceled order exclusion with existing slicer context rather than replacing it — slicer responsiveness preserved*
-- *Avg Order Value cascades automatically — no DAX changes*
-- *\_Validation: four new measures added to document and reproduce canceled order findings — Canceled Line Items, Canceled Order Units, Orders With Canceled Lines, Orders With Mixed Lines (Entry #23)*
-- *Validated: 7,754 canceled rows, 16,488 canceled units, 2,855 canceled orders, 0 mixed-line orders*<br>
-*Next Update: Supply Performance and Inventory Planning canceled order exclusion*
+*Document Version: 1.3 — Phase 3 DAX Layer (Supply Performance canceled order exclusion)*<br>
+*Changes from v1.2:*
+- *Supply Performance: all six measures updated with KEEPFILTERS exclusion and NonCanceledCount FILTER guard (Entry #24)*
+- *Late Delivery Rate % rewritten to count-based formula — consistent with OTIF % pattern (Entry #24)*
+- *On-Time Delivery Rate % rewritten to independent count-based formula — 1 - BLANK() = 100% in DAX (Entry #24)*
+- *Validated baselines confirmed unchanged (Entry #24)*<br>
+*Next Update: Inventory Planning canceled order exclusion*

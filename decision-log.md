@@ -703,7 +703,7 @@ The DAX calculated column `Cycle Count Schedule` concatenates `ABC Tier (Classif
 | 5   | Single flat file source. No supplier dimension                                      | Cannot segment lead time by supplier                                                                                        | Shipping Mode used as a substitute                                                                                                                                                                                                                                                                              |
 | 6   | Late delivery rate of 57.3% in source data                                          | Elevated rate may concern report consumers                                                                                  | Reflects actual DataCo dataset characteristics (not a measure error). Documented on QA page                                                                                                                                                                                                                     |
 | 7   | Continuous review replenishment model applied to predominantly slow-moving products | Suggested reorder quantities are too small to differentiate meaningfully between tiers for 81% of SKUs selling < 1 unit/day | Use as directional starting reference. Periodic review is the production-grade solution for slow movers. Target days (60/45/30) are industry standard starting points, not data-derived from cost structure. Full optimization requires actual holding cost and ordering cost per SKU. Documented in Entry #20. |
-| 8   | No Shipped Quantity column in source data | In Full component of OTIF cannot be independently measured | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace left `FactOrders[Order Quantity]` in the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #24. |
+| 8   | No Shipped Quantity column in source data | In Full component of OTIF cannot be independently measured | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace left `FactOrders[Order Quantity]` in the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #26. |
 
 ---
 
@@ -751,9 +751,92 @@ KEEPFILTERS intersects the new condition with existing context rather than repla
 
 `Revenue by SKU (12-Month Trailing)` calls `[Total Revenue]` inside a CALCULATE that only modifies DimDate and DimCustomer context. KEEPFILTERS on Delivery Status persists through nested CALCULATE calls — canceled orders are automatically excluded from the trailing window calculation and all dependent measures: ABC tier assignments, SKU revenue ranking, cumulative revenue %, XYZ classification, safety stock, and all replenishment measures.
 
+### Validated Baselines (Post-Exclusion)
+
+| Measure | Value |
+|---|---|
+| Total Revenue | $35,214,428.98 |
+| Total Gross Profit | $3,806,420.63 |
+| Total Units Sold | 367,591 |
+| Total Orders | 62,897 |
+| Avg Order Value | $559.87 |
+| Avg Profit Margin % | 12.08% |
+
+### QA: Cross-Check Validation (Scaffolding Removed)
+
+Three ephemeral validation measures were built to verify the canceled order exclusion and window calculation logic. Removed after confirmation — ephemeral QA scaffolding, not permanent regression checks. Findings recorded here as the audit trail.
+
+- `Total Revenue Trailing 12M (Check)` — direct 12-month window calculation over `[Total Revenue]` with `ALL(DimProduct)`. Confirmed match with `Revenue by SKU Check`: **$10,609,791.02**
+- `Revenue by SKU Check` — `[Revenue by SKU (12-Month Trailing)]` summed across `ALL(DimProduct)`. Confirmed match with `Total Revenue Trailing 12M (Check)`: **$10,609,791.02**
+- `Total Revenue (Canceled)` — confirmed canceled revenue amount excluded from `[Total Revenue]`: **$1,570,305.33**
+
+All three confirmed. The window logic and KEEPFILTERS cascade are working correctly post-exclusion.
+
+---
+
+## Entry #24 — Supply Performance: Canceled Order Exclusion, FILTER Guard, Count-Based Rate Measures
+
+**Date:** April 2026
+**Layer:** DAX Layer — Supply Performance folder (FactOrders)
+
+### Finding: Plain CALCULATE Overrides Delivery Status Filter Context
+
+The base Supply Performance measures used `CALCULATE(..., FactOrders[Delivery Status] <> "Shipping canceled")`. CALCULATE does not add to existing filter context on the same column — it replaces it. At row grain in a canceled-only visual context (e.g. a Delivery Status slicer set to "Shipping canceled"), CALCULATE discards the canceled-only context and computes across all non-canceled orders, returning a misleading value instead of BLANK.
+
+This is distinct from the Core Measures issue in Entry #23. Core Measures are aggregations — the slicer override causes incorrect values at the total level. Supply Performance measures also compute at row grain in product-level visuals — the override produces a wrong result in a cell that should be BLANK.
+
+### Decision: NonCanceledCount FILTER Guard on All Six Measures
+
+A `NonCanceledCount` VAR was added to all six Supply Performance measures:
+
+```dax
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+```
+
+FILTER respects existing context — it does not override it. When context is canceled-only, FILTER finds zero matching rows, COUNTROWS returns 0, and the measure returns BLANK. This is the correct behavior — no delivery performance data exists for orders that never shipped.
+
+FILTER-based conditions do not require KEEPFILTERS. FILTER evaluates within existing context natively. Only CALCULATE-based Delivery Status arguments need KEEPFILTERS.
+
+### Decision: KEEPFILTERS on All CALCULATE-Based Delivery Status Arguments
+
+All CALCULATE-based Delivery Status exclusion arguments in the RETURN block were wrapped with KEEPFILTERS:
+
+```dax
+CALCULATE(
+    ...,
+    KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+)
+```
+
+KEEPFILTERS intersects the new filter with existing context rather than replacing it. With a "Late delivery" slicer active, the result is `Late delivery AND not Shipping canceled = Late delivery only` — slicer respected, canceled orders excluded. With a "Shipping canceled" slicer, the intersection is empty — returns BLANK, and the NonCanceledCount guard fires first.
+
+### Decision: Count-Based Rewrite for Late Delivery Rate % and On-Time Delivery Rate %
+
+`Late Delivery Rate %` was rewritten from `AVERAGE(FactOrders[Late Delivery Risk])` to `LateOrders / TotalOrders`. The two formulas are mathematically identical — AVERAGE of a 0/1 field equals the proportion of 1s. The count-based pattern is used for consistency with the OTIF % formula structure that will be added in a future entry.
+
+`On-Time Delivery Rate %` was rewritten from `1 - [Late Delivery Rate %]` to an independent count-based formula with its own NonCanceledCount guard. `1 - BLANK()` evaluates to 100% in DAX because arithmetic on BLANK treats it as 0, not BLANK. BLANK does not propagate through arithmetic — each derived measure requires its own explicit guard. The inherited formula from v1.2 would return 100% for every canceled row in a row-level visual.
+
+### Validated Baselines (Post-Entry #24, Unchanged)
+
+| Measure | Value |
+|---|---|
+| Late Delivery Rate % | 57.3% |
+| On-Time Delivery Rate % | 42.7% |
+| Avg Lead Time (Actual) | 3.50 days |
+| Avg Lead Time (Scheduled) | 2.93 days |
+| Avg Lead Time Variance | 0.57 days |
+| Lead Time Variance Std Dev | 1.49 days |
+
 ---
 
 *Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
 *Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
 *Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
-*Next Update: Supply Performance and Inventory Planning canceled order exclusion*
+*Phase 3 Entry #24: Supply Performance canceled order exclusion — NonCanceledCount FILTER guard, KEEPFILTERS on all CALCULATE blocks, count-based rewrites for Late Delivery Rate % and On-Time Delivery Rate %, 1 - BLANK() fix*
+*Next Update: Inventory Planning canceled order exclusion*
