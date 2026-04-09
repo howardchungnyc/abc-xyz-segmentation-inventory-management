@@ -835,8 +835,58 @@ KEEPFILTERS intersects the new filter with existing context rather than replacin
 
 ---
 
+## Entry #25 — Inventory Planning: Canceled Order Exclusion
+
+**Date:** April 2026
+**Layer:** DAX Layer — Inventory Planning folder (FactOrders)
+
+### Finding: Canceled Units Inflate Demand Inputs
+
+`Avg Daily Demand by SKU` and `Demand Std Dev (Daily)` both use trailing 12-month window aggregations over `FactOrders[Order Quantity]`. Prior to this entry, both measures included canceled rows. Validated dataset: 16,488 canceled units across 7,754 rows. Including them overstates average daily demand and distorts the standard deviation of daily demand, which inflates Safety Stock, Reorder Point, Reorder Quantity, and shifts XYZ Classification thresholds.
+
+### Decision: KEEPFILTERS on Avg Daily Demand by SKU TotalUnits CALCULATE Block
+
+The `TotalUnits` VAR inside `Avg Daily Demand by SKU` uses `CALCULATE` with multiple filter arguments (DimDate window, ALL(DimCustomer)). A plain `Delivery Status <> "Shipping canceled"` argument inside CALCULATE would override any existing Delivery Status slicer context. KEEPFILTERS wraps the exclusion to intersect with rather than replace that context:
+
+```dax
+VAR TotalUnits =
+    CALCULATE(
+        SUM(FactOrders[Order Quantity]),
+        DimDate[Date] > WindowStart,
+        DimDate[Date] <= WindowEnd,
+        ALL(DimCustomer),
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+    )
+```
+
+`WindowDays` counts calendar days from DimDate, not order rows — no Delivery Status filter needed there.
+
+### Decision: Plain Condition Inside FILTER Predicate for Demand Std Dev (Daily)
+
+`Demand Std Dev (Daily)` builds `DailyDemandTable` via `CALCULATETABLE(SUMMARIZE(FILTER(...)))`. The canceled order exclusion belongs inside the FILTER predicate alongside the existing date window conditions:
+
+```dax
+FILTER(
+    FactOrders,
+    FactOrders[Order Date] > WindowStart &&
+    FactOrders[Order Date] <= WindowEnd &&
+    FactOrders[Delivery Status] <> "Shipping canceled"
+)
+```
+
+FILTER evaluates within existing context without overriding it — KEEPFILTERS is not needed here. Using KEEPFILTERS inside a FILTER predicate would be a category error: KEEPFILTERS is a CALCULATE modifier, not a boolean predicate.
+
+### Cascade: No Changes Required to Dependent Measures
+
+Excluding canceled orders from `Avg Daily Demand by SKU` and `Demand Std Dev (Daily)` cascades automatically through every downstream measure — `Coefficient of Variation`, `XYZ Classification`, `Safety Stock`, `Reorder Point`, `Reorder Quantity`, `Reorder Flag`, `Stock Coverage (Days)`. No formula changes needed to any of these measures.
+
+`Revenue by SKU (12-Month Trailing)` calls `[Total Revenue]` directly, which already carries KEEPFILTERS canceled order exclusion from Entry #23. No changes needed.
+
+---
+
 *Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
 *Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
 *Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
 *Phase 3 Entry #24: Supply Performance canceled order exclusion — NonCanceledCount FILTER guard, KEEPFILTERS on all CALCULATE blocks, count-based rewrites for Late Delivery Rate % and On-Time Delivery Rate %, 1 - BLANK() fix*
-*Next Update: Inventory Planning canceled order exclusion*
+*Phase 3 Entry #25: Inventory Planning canceled order exclusion — KEEPFILTERS on Avg Daily Demand TotalUnits CALCULATE block, plain FILTER predicate condition on Demand Std Dev (Daily), deprecated references fixed in Coefficient of Variation, XYZ Classification (DimColumn), Cycle Count Schedule, SKU Count - Unclassified, cascade through all dependent measures confirmed*
+*Next Update: Simulated Inventory Level redesign*
