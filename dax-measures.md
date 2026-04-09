@@ -909,6 +909,8 @@ CALCULATE(
 
 **Architecture:** ABC tier drives service level (Z-score → Safety Stock). XYZ classification drives replenishment behavior (target days → Reorder Quantity). These are decoupled dimensions. See [decision-log.md](./decision-log.md) Entry #20.
 
+**Canceled order exclusion:** `Avg Daily Demand by SKU` and `Demand Std Dev (Daily)` both exclude canceled orders. Canceled units overstate demand and inflate Safety Stock, Reorder Point, Reorder Quantity, and XYZ Classification downstream. Exclusion cascades automatically through all dependent measures. See [decision-log.md](./decision-log.md) Entry #25.
+
 **Grain constraint:** Safety Stock, Reorder Point, Reorder Flag, Reorder Quantity, and Stock Coverage (Days) only calculate at Product Name grain. `[ABC Tier]` uses `ISINSCOPE(DimProduct[Product Name])` — returns BLANK at category, department, or total grain. This is intentional — these are per-SKU operational parameters. All report pages using these measures must include Product Name as a row dimension.
 
 **Folder name:** Inventory Planning — aligned with APICS CPIM Planning domain terminology. Previously named "Safety Stock & Replenishment." See [decision-log.md](./decision-log.md) Entry #16.
@@ -919,11 +921,15 @@ CALCULATE(
 
 **Table:** FactOrders<br>
 **Format:** Decimal number, 2 decimal places<br>
-**Dependencies:** `FactOrders[Order Quantity]`, `FactOrders[Order Date]`, `DimDate[Date]`, `DimCustomer`<br>
+**Dependencies:** `FactOrders[Order Quantity]`, `FactOrders[Order Date]`, `FactOrders[Delivery Status]`, `DimDate[Date]`, `DimCustomer`<br>
 
-**DAX:**
 ```dax
-Avg Daily Demand by SKU = 
+Avg Daily Demand by SKU =
+-- Average fulfilled units per day in the trailing 12-month window.
+-- Canceled orders excluded -- 16,488 canceled units confirmed in dataset.
+-- Including them overstates demand and inflates Safety Stock, Reorder Point,
+-- Reorder Quantity, and XYZ Classification. See Entry #25.
+-- `[Fixed Context]` ALL(DimCustomer) removes customer segment filters -- demand reflects total market.
 
 VAR WindowEnd =
     CALCULATE(
@@ -939,7 +945,9 @@ VAR TotalUnits =
         SUM(FactOrders[Order Quantity]),
         DimDate[Date] > WindowStart,
         DimDate[Date] <= WindowEnd,
-        ALL(DimCustomer)
+        ALL(DimCustomer),
+        -- Canceled orders excluded -- never fulfilled, overstate demand if included.
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
     )
 
 VAR WindowDays =
@@ -953,12 +961,13 @@ RETURN
     DIVIDE(TotalUnits, WindowDays)
 ```
 
-**Description:** Average units sold per day in the trailing 12-month window. Represents expected daily demand for replenishment calculations.
+**Description:** Average fulfilled units per day in the trailing 12-month window. Represents expected daily demand for replenishment calculations.
 
 **Notes:**
 - `[Fixed Context]` `ALL(DimCustomer)` removes customer segment filters — demand reflects total market.
 - `WindowDays` counts actual calendar days rather than hardcoding 365 — accounts for leap years.
 - Window: Feb 1, 2017 → Jan 31, 2018 = 365 days for this dataset.
+- Canceled orders excluded. See Entry #25.
 - Primary input to Safety Stock and Reorder Point.
 
 ---
@@ -967,11 +976,14 @@ RETURN
 
 **Table:** FactOrders<br>
 **Format:** Decimal number, 2 decimal places<br>
-**Dependencies:** `FactOrders[Order Quantity]`, `FactOrders[Order Date]`, `DimDate[Date]`<br>
+**Dependencies:** `FactOrders[Order Quantity]`, `FactOrders[Order Date]`, `FactOrders[Delivery Status]`, `DimDate[Date]`<br>
 
-**DAX:**
 ```dax
-Demand Std Dev (Daily) = 
+Demand Std Dev (Daily) =
+-- Standard deviation of daily fulfilled units in the trailing 12-month window.
+-- Measures true daily demand variability -- not order size variability.
+-- Canceled orders excluded -- never fulfilled, overstate variability if included.
+-- See Entry #25.
 
 VAR WindowEnd =
     CALCULATE(
@@ -988,7 +1000,9 @@ VAR DailyDemandTable =
             FILTER(
                 FactOrders,
                 FactOrders[Order Date] > WindowStart &&
-                FactOrders[Order Date] <= WindowEnd
+                FactOrders[Order Date] <= WindowEnd &&
+                -- Canceled orders excluded -- never fulfilled, overstate variability if included.
+                FactOrders[Delivery Status] <> "Shipping canceled"
             ),
             FactOrders[Order Date],
             "DailyUnits", SUM(FactOrders[Order Quantity])
@@ -998,14 +1012,14 @@ VAR DailyDemandTable =
 
 RETURN
     STDEVX.P(DailyDemandTable, [DailyUnits])
-  
 ```
 
-**Description:** Standard deviation of daily units sold in the trailing 12-month window. Measures true daily demand variability — not order size variability.
+**Description:** Standard deviation of daily fulfilled units in the trailing 12-month window. Measures true daily demand variability — not order size variability.
 
 **Notes:**
-- `STDEV.P(FactOrders[Order Quantity])` (the original deprecated approach) measures how customers place orders — big vs small individual transactions. A corporate buyer ordering 50 units once produces the same total daily demand as five buyers ordering 10 units each, but very different order-level standard deviations. The original measure was wrong. See Entry #20.
+- `STDEV.P(FactOrders[Order Quantity])` (the original deprecated approach) measures order size variability, not daily demand variability. See Entry #20.
 - `STDEVX.P` iterates over daily totals and correctly measures how much each day's demand deviates from the daily average.
+- Canceled orders excluded inside the FILTER predicate — plain condition, not KEEPFILTERS. FILTER respects existing context natively; KEEPFILTERS is not needed here. See Entry #25.
 - Critical input to Safety Stock formula: `σ²_demand`.
 
 ---
@@ -2052,10 +2066,13 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.3 — Phase 3 DAX Layer (Supply Performance canceled order exclusion)*<br>
-*Changes from v1.2:*
-- *Supply Performance: all six measures updated with KEEPFILTERS exclusion and NonCanceledCount FILTER guard (Entry #24)*
-- *Late Delivery Rate % rewritten to count-based formula — consistent with OTIF % pattern (Entry #24)*
-- *On-Time Delivery Rate % rewritten to independent count-based formula — 1 - BLANK() = 100% in DAX (Entry #24)*
-- *Validated baselines confirmed unchanged (Entry #24)*<br>
-*Next Update: Inventory Planning canceled order exclusion*
+*Document Version: 1.4 — Phase 3 DAX Layer (Inventory Planning canceled order exclusion)*<br>
+*Changes from v1.3:*
+- *Avg Daily Demand by SKU: KEEPFILTERS canceled order exclusion added to TotalUnits CALCULATE block (Entry #25)*
+- *Demand Std Dev (Daily): canceled order exclusion added inside FILTER predicate — plain condition, KEEPFILTERS not needed in FILTER context (Entry #25)*
+- *Coefficient of Variation: deprecated Demand Std Dev reference fixed to [Demand Std Dev (Daily)] (Entry #25)*
+- *XYZ Classification (DimColumn): deprecated Demand Std Dev reference fixed to [Demand Std Dev (Daily)] (Entry #25)*
+- *Cycle Count Schedule: deprecated XYZ Classification reference fixed to [XYZ Classification (DimColumn)] (Entry #25)*
+- *SKU Count - Unclassified: deprecated XYZ Classification (DimColumn) reference fixed (Entry #25)*
+- *Cascade confirmed through Coefficient of Variation, XYZ Classification, Safety Stock, Reorder Point, Reorder Quantity, Reorder Flag, Stock Coverage (Days) (Entry #25)*<br>
+*Next Update: Simulated Inventory Level redesign*
