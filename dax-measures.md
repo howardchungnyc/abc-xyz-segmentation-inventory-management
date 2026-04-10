@@ -272,8 +272,8 @@ PERCENTILEX.INC(
 ```
 
 **Notes:**
-- Validated value: **3.96**
-- Used as X/Y boundary in XYZ Classification thresholds. See Entry #17.
+- Validated value: **3.99** (post Entry #25 canceled order exclusion — prior value 3.96)
+- Used as X/Y boundary in XYZ Classification thresholds. See Entry #17 and Entry #27.
 
 ---
 
@@ -314,8 +314,8 @@ PERCENTILEX.INC(
 ```
 
 **Notes:**
-- Validated value: **10.91**
-- Used as Y/Z boundary in XYZ Classification thresholds. See Entry #17.
+- Validated value: **11.48** (post Entry #25 canceled order exclusion — prior value 10.91)
+- Used as Y/Z boundary in XYZ Classification thresholds. See Entry #17 and Entry #27.
 
 ---
 
@@ -1455,8 +1455,8 @@ IF(
             SWITCH(
                 TRUE(),
                 ISBLANK(CV),    "Unclassified",
-                CV <= 3.96,     "X",
-                CV <= 10.91,    "Y",
+                CV <= 3.99,     "X",
+                CV <= 11.48,    "Y",
                 "Z"
             )
         )
@@ -1468,8 +1468,9 @@ IF(
 **Notes:**
 - XYZ drives replenishment behavior (target days, order frequency). ABC drives service level (Z-score). These are separate dimensions. See Entry #17.
 - **CV thresholds are data-driven, not assumed constants.** Standard literature thresholds (0.5/1.0) assume moderate-to-high velocity demand and are not applicable to this catalog where 81% of SKUs sell < 1 unit/day — near-zero demand mathematically produces very high CV values, making standard thresholds classify ~95% of SKUs as Z with no meaningful segmentation.
-- Thresholds set at 25th percentile (3.96) and 75th percentile (10.91) of actual CV distribution — guarantees meaningful three-way split. X = bottom 25% most stable, Y = middle 50%, Z = top 25% most erratic.
-- CV distribution: 25th = 3.96, 50th = 7.81, 75th = 10.91, 90th = 17.95.
+- Thresholds recalibrated post Entry #25 canceled order exclusion. Excluding canceled units shifted the entire CV distribution upward — demand variability increased relative to mean demand once inflated canceled units were removed. See Entry #27.
+- Thresholds set at 25th percentile (3.99) and 75th percentile (11.48) of actual post-exclusion CV distribution — guarantees meaningful three-way split. X = bottom 25% most stable, Y = middle 50%, Z = top 25% most erratic.
+- CV distribution (post-exclusion): 25th = 3.99, 50th = 8.30, 75th = 11.48, 90th = 18.67.
 - For slicing and filtering, use `DimProduct[XYZ Classification (DimColumn)]` calculated column.
 
 ---
@@ -2056,8 +2057,8 @@ RETURN
         SWITCH(
             TRUE(),
             ISBLANK(CV),    "Unclassified",
-            CV <= 3.96,     "X",
-            CV <= 10.91,    "Y",
+            CV <= 3.99,     "X",
+            CV <= 11.48,    "Y",
             "Z"
         )
     )
@@ -2066,7 +2067,7 @@ RETURN
 **Notes:**
 - Use for slicers and visual row grouping.
 - For dynamic filter context, use `[XYZ Classification]` measure.
-- Thresholds: X ≤ 3.96 (bottom 25%), Y 3.96–10.91 (middle 50%), Z > 10.91 (top 25%).
+- Thresholds: X ≤ 3.99 (bottom 25%), Y 3.99–11.48 (middle 50%), Z > 11.48 (top 25%). Recalibrated post Entry #25 canceled order exclusion. See Entry #27.
 
 ---
 
@@ -2074,13 +2075,13 @@ RETURN
 
 The combined ABC XYZ matrix is the industry-standard idea for tying cycle count frequency to both revenue concentration and demand variability. In this model, neither axis assigns cadence alone: `DimProduct[Cycle Count Schedule]` evaluates the pair (ABC tier letter + XYZ class letter), e.g. `AX` or `BZ`, and returns one label via `SWITCH`. **ABC tier** encodes how costly an inventory error is in revenue terms. **XYZ class** encodes demand variability (CV), a proxy for how easily system-to-physical error can stay hidden between counts. Together they yield nine active combinations (plus Inactive → Annual) with differentiated schedules.
 
-Operationally, count frequency is always a joint outcome of that pair—not “XYZ only.” **Z** (high CV) tightens counts relative to **X** and **Y** at the same ABC row because erratic demand provides less natural signal between formal counts. In this DataCo catalog, **X and Y share the same frequency at every ABC tier** (see [decision-log.md](./decision-log.md) Entry #22): breakpoints are this dataset’s 25th / 75th CV percentiles (3.96 / 10.91), and low average daily demand inflates CV so X vs Y does not separate discrepancy risk enough to merit different cadences—Z is the operationally meaningful split. A miscounted A item still drives the highest revenue exposure; a Z item still compounds error longest. Under a different population—e.g. textbook XYZ bands on a normalized or low CV scale (such as 0–1) suited to higher-velocity catalogs—X and Y would often map to different frequencies and the matrix would need to be rebuilt.
+Operationally, count frequency is always a joint outcome of that pair—not “XYZ only.” **Z** (high CV) tightens counts relative to **X** and **Y** at the same ABC row because erratic demand provides less natural signal between formal counts. In this DataCo catalog, **X and Y share the same frequency at every ABC tier** (see [decision-log.md](./decision-log.md) Entry #22): breakpoints are this dataset’s 25th / 75th CV percentiles (3.99 / 11.48, recalibrated post Entry #25 exclusion — see Entry #27), and low average daily demand inflates CV so X vs Y does not separate discrepancy risk enough to merit different cadences—Z is the operationally meaningful split. A miscounted A item still drives the highest revenue exposure; a Z item still compounds error longest. Under a different population—e.g. textbook XYZ bands on a normalized or low CV scale (such as 0–1) suited to higher-velocity catalogs—X and Y would often map to different frequencies and the matrix would need to be rebuilt.
 
 **Source:** APICS CPIM Body of Knowledge — cycle count frequency proportional to revenue contribution and demand variability.
 
 ### Matrix
 
-| | X (Stable, CV ≤ 3.96) | Y (Moderate, CV 3.96–10.91) | Z (Erratic, CV > 10.91) |
+| | X (Stable, CV ≤ 3.99) | Y (Moderate, CV 3.99–11.48) | Z (Erratic, CV > 11.48) |
 |---|---|---|---|
 | **A** (top 80% revenue) | Monthly | Monthly | **Weekly** |
 | **B** (80–95% revenue) | Quarterly | Quarterly | Monthly |
@@ -2151,15 +2152,13 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.5 — Phase 3 DAX Layer (Simulated Inventory Level redesign)*<br>
-*Changes from v1.4:*
-- *Simulated Inventory Level: redesigned from MOD/SafeRange velocity approach to three-state ROP-anchored design using SKU Revenue Rank (DimColumn) as MOD input (Entry #26)*
-- *SKU Revenue Rank (DimColumn): new DimProduct calculated column — sequential 1–118 revenue rank, MOD input for Simulated Inventory Level (Entry #26)*
-- *Reorder Flag: deprecated Simulated Inventory Level reference updated (Entry #26)*
-- *Reorder Quantity: deprecated Simulated Inventory Level reference updated (Entry #26)*
-- *Stock Coverage (Days): deprecated Simulated Inventory Level reference updated (Entry #26)*
-- *Validated distribution: 11 Stockout (~10%), 36 Reorder Now (~30%), 71 Stock OK (~60%) (Entry #26)*
-- *SKU Count at Rank (Tie Check): purpose and notes updated — tie resolved post Entry #25, validated value updated to 1 (Entry #26)*
-- *SKU Rank by Revenue: Dense tie note updated — max rank is now 118, no ties (Entry #26)*
-- *SKU Revenue Rank (DimColumn): Dense tie note updated — all 118 products have unique ranks (Entry #26)*<br>
-*Next Update: XYZ threshold recalibration*
+*Document Version: 1.6 — Phase 3 DAX Layer (XYZ threshold recalibration)*<br>
+*Changes from v1.5:*
+- *XYZ Classification: thresholds updated from 3.96/10.91 to 3.99/11.48 — recalibrated post Entry #25 canceled order exclusion (Entry #27)*
+- *XYZ Classification (DimColumn): same threshold update (Entry #27)*
+- *CV 25th Percentile: validated value updated from 3.96 to 3.99 (Entry #27)*
+- *CV 75th Percentile: validated value updated from 10.91 to 11.48 (Entry #27)*
+- *XYZ Classification notes: CV distribution updated to post-exclusion values (Entry #27)*
+- *Cycle Count Schedule narrative: threshold references updated to 3.99/11.48 (Entry #27)*
+- *Cycle Count Schedule matrix header: threshold ranges updated (Entry #27)*<br>
+*Next Update: OTIF % added to Supply Performance*

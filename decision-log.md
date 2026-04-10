@@ -929,10 +929,49 @@ After applying canceled order exclusion in Entry #25, the tie resolved. Excludin
 
 ---
 
+## Entry #27 — XYZ Threshold Recalibration Post Canceled Order Exclusion
+
+**Date:** April 2026
+**Layer:** DAX Layer — Inventory Segmentation (FactOrders measure + DimProduct column)
+
+### Finding: CV Distribution Shifted Upward After Canceled Order Exclusion
+
+After applying canceled order exclusion in Entry #25, the CV distribution across all 118 SKUs shifted upward. Excluding canceled units reduced the demand totals used in `Avg Daily Demand by SKU` and `Demand Std Dev (Daily)`. With canceled units removed, the ratio of variability to mean demand increased for affected SKUs — demand became less predictable relative to its new lower baseline.
+
+| Percentile | Pre-Exclusion | Post-Exclusion | Delta |
+|---|---|---|---|
+| CV 25th (X/Y boundary) | 3.96 | 3.99 | +0.03 |
+| CV 50th | 7.81 | 8.30 | +0.49 |
+| CV 75th (Y/Z boundary) | 10.91 | 11.48 | +0.57 |
+| CV 90th | 17.95 | 18.67 | +0.72 |
+
+### Decision: Recalibrate Thresholds to Post-Exclusion CV Percentiles
+
+The design principle from Entry #17 is data-driven percentile thresholds, not fixed constants. The thresholds must reflect the actual CV distribution of the post-exclusion model. Updated thresholds:
+
+- X: CV ≤ **3.99** (25th percentile)
+- Y: CV 3.99 – **11.48** (25th–75th percentile)
+- Z: CV > **11.48** (above 75th percentile)
+
+Applied to both `[XYZ Classification]` (FactOrders measure) and `DimProduct[XYZ Classification (DimColumn)]`.
+
+### Finding: SKU Distribution Shifted — Six SKUs Moved from Y to Z
+
+| Class | Pre-Exclusion | Post-Exclusion |
+|---|---|---|
+| X | ~30 | 29 |
+| Y | ~59 | 54 |
+| Z | ~29 | 35 |
+
+Six SKUs shifted from Y to Z after recalibration. This is expected — excluding canceled orders exposed higher demand variability in those SKUs, and the recalibrated Y/Z boundary (11.48 vs 10.91) moved some borderline SKUs into Z. These SKUs will now receive shorter replenishment coverage (30 days vs 45 days in `Reorder Quantity`) and will be monitored more frequently per the cycle count matrix.
+
+---
+
 *Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
 *Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
 *Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
 *Phase 3 Entry #24: Supply Performance canceled order exclusion — NonCanceledCount FILTER guard, KEEPFILTERS on all CALCULATE blocks, count-based rewrites for Late Delivery Rate % and On-Time Delivery Rate %, 1 - BLANK() fix*
 *Phase 3 Entry #25: Inventory Planning canceled order exclusion — KEEPFILTERS on Avg Daily Demand TotalUnits CALCULATE block, plain FILTER predicate condition on Demand Std Dev (Daily), deprecated references fixed in Coefficient of Variation, XYZ Classification (DimColumn), Cycle Count Schedule, SKU Count - Unclassified, cascade through all dependent measures confirmed*
 *Phase 3 Entry #26: Simulated Inventory Level redesign — three-state ROP-anchored design, SKU Revenue Rank (DimColumn) as MOD input, validated 11/36/71 distribution, rank tie resolved post Entry #25 exclusion*
-*Next Update: XYZ threshold recalibration*
+*Phase 3 Entry #27: XYZ threshold recalibration — thresholds updated from 3.96/10.91 to 3.99/11.48, CV distribution shift documented, SKU distribution change confirmed*
+*Next Update: OTIF % added to Supply Performance*
