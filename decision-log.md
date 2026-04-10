@@ -703,7 +703,7 @@ The DAX calculated column `Cycle Count Schedule` concatenates `ABC Tier (Classif
 | 5   | Single flat file source. No supplier dimension                                      | Cannot segment lead time by supplier                                                                                        | Shipping Mode used as a substitute                                                                                                                                                                                                                                                                              |
 | 6   | Late delivery rate of 57.3% in source data                                          | Elevated rate may concern report consumers                                                                                  | Reflects actual DataCo dataset characteristics (not a measure error). Documented on QA page                                                                                                                                                                                                                     |
 | 7   | Continuous review replenishment model applied to predominantly slow-moving products | Suggested reorder quantities are too small to differentiate meaningfully between tiers for 81% of SKUs selling < 1 unit/day | Use as directional starting reference. Periodic review is the production-grade solution for slow movers. Target days (60/45/30) are industry standard starting points, not data-derived from cost structure. Full optimization requires actual holding cost and ordering cost per SKU. Documented in Entry #20. |
-| 8   | No Shipped Quantity column in source data | In Full component of OTIF cannot be independently measured | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace left `FactOrders[Order Quantity]` in the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #26. |
+| 8   | No Shipped Quantity column in source data | In Full component of OTIF cannot be independently measured | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace left `FactOrders[Order Quantity]` in the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #27. |
 
 ---
 
@@ -884,9 +884,55 @@ Excluding canceled orders from `Avg Daily Demand by SKU` and `Demand Std Dev (Da
 
 ---
 
+## Entry #26 — Simulated Inventory Level Redesign
+
+**Date:** April 2026
+**Layer:** DAX Layer — DimProduct Inventory Segmentation (calculated columns)
+
+### Finding: Original Design Produced Uneven Bucket Distribution
+
+The original `Simulated Inventory Level` used `MOD([Product Card Id], SafeRange)` where `SafeRange` was derived from each SKU's average daily demand. `Product Card Id` is a non-sequential arbitrary identifier — MOD of arbitrary integers against a variable range does not guarantee even bucket distribution. The three-state distribution (Stockout, Reorder Now, Stock OK) could not be controlled or validated, and the simulation range scaled to demand velocity rather than to the reorder logic being tested.
+
+### Decision: Three-State ROP-Anchored Design
+
+The redesign replaces the velocity-proportionate approach with three explicit states anchored to `[Reorder Point]`:
+
+- **Stockout** (Bucket 0): inventory = 0. Tests the stockout escalation path in `Reorder Flag`.
+- **Reorder Now** (Buckets 1–3): inventory = `CEILING(ROP * 0.5, 1)`. Places inventory at 50% of ROP — below threshold, triggers Reorder Now.
+- **Stock OK** (Buckets 4–9): inventory = `CEILING(ROP * 1.5, 1)`. Places inventory at 150% of ROP — above threshold, triggers Stock OK.
+
+ROP-anchored levels mean the simulation is operationally grounded — each SKU's simulated inventory is proportionate to its actual replenishment trigger, not an arbitrary velocity range.
+
+### Decision: SKU Revenue Rank (DimColumn) as MOD Input
+
+`Product Card Id` was replaced by `DimProduct[SKU Revenue Rank (DimColumn)]` as the MOD input. Revenue rank is sequential 1–118 — MOD of a sequential integer against 10 guarantees even bucket distribution. 118 SKUs ÷ 10 buckets = ~11–12 SKUs per bucket, producing the target ~10/30/60 distribution.
+
+`RANKX` with `[Revenue by SKU (12-Month Trailing)]` cannot be used directly inside a calculated column — the measure's fixed context window returns the aggregate rather than the per-row value. A dedicated `SKU Revenue Rank (DimColumn)` calculated column stores the rank at refresh time, sidestepping the context evaluation issue.
+
+### Validated Distribution (Post-Redesign)
+
+| Flag | Expected | Actual |
+|---|---|---|
+| 🚨 Stockout | ~12 (10%) | 11 (9.3%) |
+| ⚠ Reorder Now | ~35 (30%) | 36 (30.5%) |
+| ✓ Stock OK | ~71 (60%) | 71 (60.2%) |
+
+Small deviations from exact 10/30/60 are expected — 118 SKUs cannot distribute evenly across 10 buckets (118 ÷ 10 = 11.8). Each bucket receives either 11 or 12 SKUs. Distribution is correct.
+
+### Finding: Revenue Rank Tie Resolved Post Canceled Order Exclusion
+
+Prior to Entry #25, `SKU Count at Rank (Tie Check)` returned 2 — two products shared identical 12-month trailing revenue, producing a max displayed rank of 116 against 118 active products. This was documented as expected behavior in the original model.
+
+After applying canceled order exclusion in Entry #25, the tie resolved. Excluding canceled revenue changed one product's 12-month trailing revenue enough to break the equality. `SKU Count at Rank (Tie Check)` now returns 1 — all 118 products have unique revenue ranks, max rank is 118.
+
+`SKU Count at Rank (Tie Check)` remains active in `_Validation` as a regression check. Any future value > 1 signals a new tie has emerged and max displayed rank has fallen below 118.
+
+---
+
 *Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
 *Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
 *Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
 *Phase 3 Entry #24: Supply Performance canceled order exclusion — NonCanceledCount FILTER guard, KEEPFILTERS on all CALCULATE blocks, count-based rewrites for Late Delivery Rate % and On-Time Delivery Rate %, 1 - BLANK() fix*
 *Phase 3 Entry #25: Inventory Planning canceled order exclusion — KEEPFILTERS on Avg Daily Demand TotalUnits CALCULATE block, plain FILTER predicate condition on Demand Std Dev (Daily), deprecated references fixed in Coefficient of Variation, XYZ Classification (DimColumn), Cycle Count Schedule, SKU Count - Unclassified, cascade through all dependent measures confirmed*
-*Next Update: Simulated Inventory Level redesign*
+*Phase 3 Entry #26: Simulated Inventory Level redesign — three-state ROP-anchored design, SKU Revenue Rank (DimColumn) as MOD input, validated 11/36/71 distribution, rank tie resolved post Entry #25 exclusion*
+*Next Update: XYZ threshold recalibration*
