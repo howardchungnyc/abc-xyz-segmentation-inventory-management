@@ -134,6 +134,7 @@ DimProduct
     ├── Cycle Count Schedule
     ├── Demand Velocity Band (DEPRECATED - XYZ Classification)
     ├── Simulated Inventory Level
+    ├── SKU Revenue Rank (DimColumn)
     └── XYZ Classification (DimColumn)
 ```
 
@@ -595,7 +596,7 @@ CALCULATE(
 ---
 
 ### SKU Count at Rank (Tie Check)
-**Purpose:** Identifies products sharing the same revenue rank due to Dense tie-handling. Value of 2 flags a tied pair. Used to explain why maximum displayed rank is 116 against 118 active products.
+**Purpose:** Regression check — identifies products sharing the same revenue rank due to Dense tie-handling. Returns 1 when no ties exist (all products have unique ranks). Any value > 1 flags a tied pair and signals that Dense ranking has produced a max displayed rank below 118.
 **Report Page:** QA -
 
 **DAX:**
@@ -613,7 +614,10 @@ RETURN
 ```
 
 **Notes:**
-- `ThisRank` VAR freezes current row's rank before FILTER iterates. Without VAR, both sides of `=` evaluate in iterator context — always TRUE — returning 118 for every row.
+- `ThisRank` VAR captures this product's rank before the FILTER runs. Without it, the comparison always evaluates to TRUE and every product returns 118.
+- Returns 1 when all products have unique revenue ranks — the normal healthy state. Returns 2 (or higher) when two or more products share the same revenue rank, which causes the ranking to skip numbers and the maximum rank to fall below 118.
+- Validated value: **1** (post Entry #25 canceled order exclusion). Before exclusion, two products had identical 12-month revenue and this returned 2. Removing canceled orders changed one product's revenue enough to separate them.
+- Monitor this on every model refresh. Any value above 1 means a tie exists and needs investigation.
 
 ---
 
@@ -1426,7 +1430,7 @@ IF(
 **Notes:**
 - `ISINSCOPE` guard returns BLANK at subtotal and total rows.
 - `ALL(DimProduct)` iterator ensures ranking always against all 118 products regardless of visual filters.
-- `Dense` tie-handling: two products share identical trailing revenue, producing max displayed rank of 116 against 118 active products. Expected behavior. See `SKU Count at Rank (Tie Check)` in `_Validation`.
+- `Dense` tie-handling: if two products share identical trailing revenue, both receive the same rank and max displayed rank falls below 118. Post Entry #25 canceled order exclusion, no ties exist — max rank is 118. See `SKU Count at Rank (Tie Check)` in `_Validation`.
 - Must evaluate at Product Name grain.
 
 ---
@@ -1928,22 +1932,102 @@ RETURN
 **Table:** DimProduct<br>
 **Folder:** Inventory Segmentation<br>
 **Format:** Whole number<br>
+**Dependencies:** `[Reorder Point]`, `DimProduct[SKU Revenue Rank (DimColumn)]`<br>
 
 **DAX:**
 ```dax
 Simulated Inventory Level = 
-VAR AvgDailyDemand = [Avg Daily Demand by SKU]
-VAR UpperBound = ROUND(AvgDailyDemand * 60, 0)
-VAR SafeRange = IF(UpperBound > 0, UpperBound, 1)
+-- Simulates a realistic inventory position for testing reorder flag logic.
+-- Three states distributed deterministically by revenue rank:
+--   10% Stockout    (MOD = 0)       → inventory = 0
+--   30% Reorder Now (MOD = 1, 2, 3) → inventory at 50% of Reorder Point
+--   60% Stock OK    (MOD = 4–9)     → inventory at 150% of Reorder Point
+--
+-- SKU Revenue Rank (DimColumn) used as MOD input — sequential 1–118,
+-- guarantees even bucket distribution across all 118 SKUs.
+-- Product Card Id avoided — non-sequential arbitrary identifier,
+-- MOD of arbitrary integers does not guarantee even bucket distribution.
+-- 118 SKUs ÷ 10 buckets = ~12 SKUs per bucket, achieving ~10/30/60 split.
+-- Bucket assignment is stable across refreshes — deterministic, not random.
+-- Reorder Point derived from actual historical demand — simulation is operationally grounded.
+-- See Limitation #1 and Entry #26.
+
+-- Pull the current Reorder Point for this SKU.
+-- BLANK for Inactive SKUs — no simulation needed outside active inventory scope.
+VAR ROP = [Reorder Point]
+
+-- Reference the pre-computed revenue rank column on DimProduct.
+-- Stored at refresh time — no measure evaluation needed at runtime.
+-- Avoids context issues with [Revenue by SKU (12-Month Trailing)] in column context.
+VAR RevenueRank = DimProduct[SKU Revenue Rank (DimColumn)]
+
+-- MOD(RevenueRank, 10) maps the sequential rank to a bucket 0–9.
+-- Rank 10 → bucket 0, Rank 20 → bucket 0, Rank 11 → bucket 1, etc.
+-- Even distribution: each bucket receives ~11–12 of the 118 SKUs.
+VAR Bucket = MOD(RevenueRank, 10)
+
+-- 50% of ROP places inventory below the reorder threshold.
+-- CEILING rounds up to nearest whole unit — no fractional inventory.
+-- This level triggers Reorder Now in Reorder Flag.
+VAR ReorderNowLevel = CEILING(ROP * 0.5, 1)
+
+-- 150% of ROP places inventory comfortably above the reorder threshold.
+-- CEILING rounds up to nearest whole unit.
+-- This level triggers Stock OK in Reorder Flag.
+VAR StockOKLevel = CEILING(ROP * 1.5, 1)
 
 RETURN
-    MOD([Product Card Id], SafeRange)
+    IF(
+        -- Guard: Inactive SKUs have no Reorder Point — return BLANK.
+        -- No simulation needed for products outside active inventory management scope.
+        ISBLANK(ROP),
+        BLANK(),
+        SWITCH(
+            TRUE(),
+            -- Bucket 0: ~10% of SKUs (ranks 10, 20, 30...) → Stockout
+            Bucket = 0,     0,
+            -- Buckets 1–3: ~30% of SKUs (ranks ending in 1, 2, 3...) → Reorder Now
+            Bucket <= 3,    ReorderNowLevel,
+            -- Buckets 4–9: ~60% of SKUs (ranks ending in 4–9...) → Stock OK
+            StockOKLevel
+        )
+    )
 ```
 
 **Notes:**
 - `[Test]` Testing infrastructure only. No analytical conclusions from this column.
-- Demand-proportionate: simulation range scales to each SKU's velocity.
+- Three-state ROP-anchored design: Stockout (0), Reorder Now (50% of ROP), Stock OK (150% of ROP).
+- Revenue rank used as MOD input for guaranteed even bucket distribution — Product Card Id is non-sequential and produces uneven distribution.
+- Validated distribution: 11 Stockout (~10%), 36 Reorder Now (~30%), 71 Stock OK (~60%). See Entry #26.
 - In production: replace with live WMS/ERP on-hand snapshot. `Reorder Flag`, `Stock Coverage (Days)`, `Reorder Quantity` require no formula changes.
+
+---
+
+### SKU Revenue Rank (DimColumn) `[Test]`
+
+**Table:** DimProduct<br>
+**Folder:** Inventory Segmentation<br>
+**Format:** Whole number<br>
+**Dependencies:** `[Revenue by SKU (12-Month Trailing)]`<br>
+
+**DAX:**
+```dax
+SKU Revenue Rank (DimColumn) = 
+RANKX(
+    ALL(DimProduct),
+    [Revenue by SKU (12-Month Trailing)],
+    ,
+    DESC,
+    Dense
+)
+```
+
+**Notes:**
+- `[Test]` Infrastructure column supporting `Simulated Inventory Level`. Not a business-facing column.
+- Stores revenue rank per product at refresh time — avoids context evaluation issues with `[Revenue by SKU (12-Month Trailing)]` inside calculated column iteration.
+- Dense tie-handling: if two products share identical trailing revenue, both receive the same rank. Post Entry #25 canceled order exclusion, no ties exist — all 118 products have unique ranks producing ranks 1–118.
+- Mirrors `[SKU Rank by Revenue]` measure in FactOrders but without the `ISINSCOPE` guard — that guard is needed in measure context but not in calculated column context where row context is always active.
+- See Entry #26.
 
 ---
 
@@ -2030,7 +2114,7 @@ Operationally, count frequency is always a joint outcome of that pair—not “X
 | 2a - DimProduct columns | ABC Tier (Classification) | Layer 2 complete |
 | 3 - Supply Performance | All six lead time measures | Layer 1 complete |
 | 4 - Inventory Planning | Avg Daily Demand by SKU, Demand Std Dev (Daily), Coefficient of Variation (**Note: Layer 4 build sequence only**), XYZ Classification, Safety Stock, Reorder Point, Reorder Quantity, Reorder Flag, Stock Coverage (Days) | Layers 2 and 3 complete |
-| 4a - DimProduct columns | XYZ Classification (DimColumn), Simulated Inventory Level, Cycle Count Schedule | Layer 4 complete |
+| 4a - DimProduct columns | SKU Revenue Rank (DimColumn), XYZ Classification (DimColumn), Simulated Inventory Level, Cycle Count Schedule | Layer 4 complete |
 | 5 - Financial Impact | Implied COGS, Gross Profit by ABC Tier, Avg Margin % by ABC Tier, Pareto Concentration Ratio, Carrying Cost Estimate, Revenue at Risk (Supply), Revenue at Risk (Stockout) | Layers 1–4 complete |
 | 6 - Trend Analysis | Revenue YoY, Revenue vs Prior Period, Rolling 90-Day Demand | Layer 1 complete |
 
@@ -2056,7 +2140,8 @@ Avg Daily Demand by SKU ──────────────────�
         │                                                         │
         │                                                   Reorder Flag
         │                                                   Reorder Quantity ◄── XYZ Classification
-        │                                                   Stock Coverage (Days) ◄── Simulated Inventory
+        │                                                   Stock Coverage (Days) ◄── Simulated Inventory ◄── SKU Revenue Rank (DimColumn)
+        │                                                                                              ◄── Reorder Point
         │
 Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classification
                                                                │
@@ -2066,13 +2151,15 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.4 — Phase 3 DAX Layer (Inventory Planning canceled order exclusion)*<br>
-*Changes from v1.3:*
-- *Avg Daily Demand by SKU: KEEPFILTERS canceled order exclusion added to TotalUnits CALCULATE block (Entry #25)*
-- *Demand Std Dev (Daily): canceled order exclusion added inside FILTER predicate — plain condition, KEEPFILTERS not needed in FILTER context (Entry #25)*
-- *Coefficient of Variation: deprecated Demand Std Dev reference fixed to [Demand Std Dev (Daily)] (Entry #25)*
-- *XYZ Classification (DimColumn): deprecated Demand Std Dev reference fixed to [Demand Std Dev (Daily)] (Entry #25)*
-- *Cycle Count Schedule: deprecated XYZ Classification reference fixed to [XYZ Classification (DimColumn)] (Entry #25)*
-- *SKU Count - Unclassified: deprecated XYZ Classification (DimColumn) reference fixed (Entry #25)*
-- *Cascade confirmed through Coefficient of Variation, XYZ Classification, Safety Stock, Reorder Point, Reorder Quantity, Reorder Flag, Stock Coverage (Days) (Entry #25)*<br>
-*Next Update: Simulated Inventory Level redesign*
+*Document Version: 1.5 — Phase 3 DAX Layer (Simulated Inventory Level redesign)*<br>
+*Changes from v1.4:*
+- *Simulated Inventory Level: redesigned from MOD/SafeRange velocity approach to three-state ROP-anchored design using SKU Revenue Rank (DimColumn) as MOD input (Entry #26)*
+- *SKU Revenue Rank (DimColumn): new DimProduct calculated column — sequential 1–118 revenue rank, MOD input for Simulated Inventory Level (Entry #26)*
+- *Reorder Flag: deprecated Simulated Inventory Level reference updated (Entry #26)*
+- *Reorder Quantity: deprecated Simulated Inventory Level reference updated (Entry #26)*
+- *Stock Coverage (Days): deprecated Simulated Inventory Level reference updated (Entry #26)*
+- *Validated distribution: 11 Stockout (~10%), 36 Reorder Now (~30%), 71 Stock OK (~60%) (Entry #26)*
+- *SKU Count at Rank (Tie Check): purpose and notes updated — tie resolved post Entry #25, validated value updated to 1 (Entry #26)*
+- *SKU Rank by Revenue: Dense tie note updated — max rank is now 118, no ties (Entry #26)*
+- *SKU Revenue Rank (DimColumn): Dense tie note updated — all 118 products have unique ranks (Entry #26)*<br>
+*Next Update: XYZ threshold recalibration*
