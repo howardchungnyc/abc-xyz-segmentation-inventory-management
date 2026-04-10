@@ -176,7 +176,7 @@ Evaluated at **model refresh**. Folder in model: **Inventory Segmentation**. Ful
 | Column                                                   | Data type    | Notes                                                                                                                                                                                                                                                                                      |
 | -------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ABC Tier (Classification)`                              | Text         | APICS 80 / 15 / 5 cumulative revenue tiers A / B / C or Inactive (12-month trailing window). Dynamic equivalent: `[ABC Tier]` measure on `FactOrders`. See Entry #17.                                                   |
-| `XYZ Classification (DimColumn)`                         | Text         | X / Y / Z / Inactive / Unclassified from coefficient of variation vs catalog cutoffs 3.96 and 10.91 (25th / 75th percentile CV). Dynamic equivalent: `[XYZ Classification]` measure. See Entry #17.                                                            |
+| `XYZ Classification (DimColumn)`                         | Text         | X / Y / Z / Inactive / Unclassified from coefficient of variation vs catalog cutoffs 3.99 and 11.48 (25th / 75th percentile CV, recalibrated post Entry #25 canceled order exclusion). Dynamic equivalent: `[XYZ Classification]` measure. See Entry #17 and Entry #27.                                                            |
 | `Cycle Count Schedule`                                   | Text         | Monthly, Weekly, Quarterly, Semi-Annual, Annual (Inactive), or Review schedule determined by **ABC Tier (Classification)** × **XYZ** combination. See matrix and rationale at Entry #22. One-page reference: `[abc-xyz-cycle-count-framework.html](./abc-xyz-cycle-count-framework.html)`. |
 | `Simulated Inventory Level`                              | Whole Number | **Test column only**. Three-state ROP-anchored simulation: Stockout (0), Reorder Now (50% of Reorder Point), Stock OK (150% of Reorder Point). Distributed by revenue rank via MOD — guarantees ~10/30/60 split across 118 SKUs. Replace with live WMS/ERP snapshot in production. See Entry #26.                                                                                                |
 | `SKU Revenue Rank (DimColumn)`                           | Whole Number | **Infrastructure column only**. Sequential 1–118 revenue rank used as MOD input for `Simulated Inventory Level`. Stores rank at refresh time to avoid measure context issues. Not a business-facing column. See Entry #26.                                                                                                |
@@ -340,7 +340,6 @@ Evaluated at **model refresh**. Folder in model: **Inventory Segmentation**. Ful
 
 ---
 
-*Document Version: 1.4 — Phases 1–3: ETL + model layer + DimProduct calculated columns*
-*Changes from v1.3:*
-- *Simulated Inventory Level: updated to reflect three-state ROP-anchored redesign (Entry #26)*
-- *SKU Revenue Rank (DimColumn): new infrastructure column added (Entry #26)*
+*Document Version: 1.5 — Phases 1–3: ETL + model layer + DimProduct calculated columns*
+*Changes from v1.4:*
+- *XYZ Classification (DimColumn): CV threshold values updated from 3.96/10.91 to 3.99/11.48 (Entry #27)*
