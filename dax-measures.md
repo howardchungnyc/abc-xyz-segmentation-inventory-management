@@ -67,6 +67,8 @@ FactOrders
 │   │   ├── Latest Order Date
 │   │   ├── Orders With Canceled Lines
 │   │   ├── Orders With Mixed Lines
+│   │   ├── OTIF % (Simulated)
+│   │   ├── Fill Rate Parameter Value
 │   │   ├── Product Match Check
 │   │   ├── Row Count Integrity
 │   │   ├── SKU Count - A Tier
@@ -110,7 +112,8 @@ FactOrders
 │   │   ├── Avg Lead Time Variance
 │   │   ├── Late Delivery Rate %
 │   │   ├── Lead Time Variance Std Dev
-│   │   └── On-Time Delivery Rate %
+│   │   ├── On-Time Delivery Rate %
+│   │   └── OTIF %
 │   │
 │   ├── Financial Impact               ⬜ Pending
 │   │   ├── Avg Margin % by ABC Tier
@@ -136,6 +139,10 @@ DimProduct
     ├── Simulated Inventory Level
     ├── SKU Revenue Rank (DimColumn)
     └── XYZ Classification (DimColumn)
+
+
+Fill Rate Parameter                    ⚠ Remove before v1.0 publish
+└── Fill Rate Parameter
 ```
 
 ---
@@ -736,6 +743,74 @@ CALCULATE(
 **Notes:**
 - Must equal 0. Non-zero means split orders exist — some orders have both canceled and fulfilled lines. In that case line-item exclusion and order-level exclusion produce different results and the exclusion design must be revisited.
 - Validated 0 across all customer states. See Entry #23.
+
+---
+
+### OTIF % (Simulated) `[Test]`
+
+**Purpose:** QA simulation measure — tests how OTIF % would behave with a real fill rate below 100%. Uses the Fill Rate Parameter what-if slicer to replace the hardcoded In Full proxy.
+**Report Page:** QA - Supply Performance
+
+**DAX:**
+```dax
+OTIF % (Simulated) = 
+-- Simulation measure for QA purposes only.
+-- Replaces the hardcoded In Full proxy (always TRUE) with a what-if fill rate.
+-- Use the Fill Rate Parameter slicer to test how OTIF % changes
+-- as fill rate drops below 100%.
+-- When Fill Rate Parameter = 100, result equals On-Time Delivery Rate %.
+-- When Fill Rate Parameter < 100, result diverges -- showing what OTIF
+-- would look like with a real fill rate measurement.
+-- Demonstrates production behavior before a real Shipped Quantity column is available.
+-- _Validation folder only. Remove before v1.0 publish. See Entry #28.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+-- Pull the current slicer value from the what-if parameter.
+-- Defaults to 100 when no slicer selection is active.
+-- DIVIDE converts from whole number (50–100) to decimal (0.50–1.00).
+VAR SimulatedFillRate = DIVIDE([Fill Rate Parameter Value], 100)
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        -- OTIF % = On-Time Rate × Fill Rate.
+        -- On-Time Rate delegated to existing measure -- identical population guaranteed.
+        -- At Fill Rate = 100: result matches On-Time Delivery Rate % exactly.
+        -- At Fill Rate = 80: result = On-Time Rate × 0.80.
+        [On-Time Delivery Rate %] * SimulatedFillRate
+    )
+```
+
+**Notes:**
+- `[Test]` QA infrastructure only. Remove before v1.0 publish. See Entry #28.
+- At Fill Rate = 100 (default): matches On-Time Delivery Rate % exactly — confirms baseline behavior.
+- At Fill Rate < 100: diverges from On-Time Rate — demonstrates production behavior once real Shipped Quantity column is available.
+- `[On-Time Delivery Rate %] * SimulatedFillRate` — BLANK propagation is safe because NonCanceledCount guard fires first.
+
+---
+
+### Fill Rate Parameter Value `[Test]`
+
+**Purpose:** Exposes the Fill Rate Parameter what-if slicer value for use in OTIF % (Simulated).
+**Report Page:** QA - Supply Performance
+
+**DAX:**
+```dax
+Fill Rate Parameter Value = SELECTEDVALUE('Fill Rate Parameter'[Fill Rate Parameter], 100)
+```
+
+**Notes:**
+- `[Test]` QA infrastructure only. Remove before v1.0 publish. See Entry #28.
+- Defaults to 100 when no slicer selection is active — OTIF % (Simulated) equals On-Time Delivery Rate % at default.
+- References `'Fill Rate Parameter'` disconnected table — no schema relationship by design.
 
 ---
 
@@ -1784,6 +1859,80 @@ RETURN
 
 ---
 
+### OTIF %
+
+**Table:** FactOrders<br>
+**Format:** Percentage, 2 decimal places<br>
+**Dependencies:** `FactOrders[Late Delivery Risk]`, `FactOrders[Order Quantity]`, `FactOrders[Delivery Status]`<br>
+
+```dax
+OTIF % = 
+-- On Time In Full: industry-standard fulfillment metric.
+-- Formula: Orders delivered On Time AND In Full / Total non-canceled orders.
+-- This is the count-based formula -- not the multiplicative approximation (On-Time Rate x Fill Rate).
+-- The multiplicative version is a convenience decomposition that diverges from true OTIF
+-- when on-time and in-full are correlated. Count-based is always correct.
+--
+-- ON-TIME condition: Late Delivery Risk = 0 (arrived on or before scheduled date).
+-- IN FULL condition: Shipped Quantity >= Order Quantity.
+--   DataCo has no Shipped Quantity column (Limitation #8).
+--   Proxy: Order Quantity used as Shipped Quantity -- assumes all orders shipped in full.
+--   This makes every non-canceled order pass the In Full condition.
+--   Result: OTIF % = On-Time Rate for this dataset.
+--   In production: replace right side of the In Full condition
+--   with FactOrders[Shipped Quantity]. No other formula changes needed.
+--
+-- Row-grain guard: NonCanceledCount uses FILTER not CALCULATE.
+-- CALCULATE overrides existing Delivery Status filter context -- see Entry #24.
+
+VAR NonCanceledCount =
+    COUNTROWS(
+        FILTER(
+            FactOrders,
+            FactOrders[Delivery Status] <> "Shipping canceled"
+        )
+    )
+
+-- Count orders satisfying BOTH on-time AND in-full conditions simultaneously.
+-- This is what separates OTIF from On-Time Rate -- the joint condition.
+VAR OTIFOrders =
+    CALCULATE(
+        COUNTROWS(FactOrders),
+        -- Canceled orders have no delivery performance observation.
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled"),
+        -- On-time condition: Late Delivery Risk = 0 means arrived on or before scheduled date.
+        FactOrders[Late Delivery Risk] = 0,
+        -- In-full condition: shipped quantity meets or exceeds ordered quantity.
+        -- Proxy: Order Quantity used as Shipped Quantity per Limitation #8.
+        -- In production: replace right side with FactOrders[Shipped Quantity].
+        FactOrders[Order Quantity] >= FactOrders[Order Quantity]
+    )
+
+-- Total non-canceled orders -- the denominator.
+VAR TotalOrders =
+    CALCULATE(
+        COUNTROWS(FactOrders),
+        KEEPFILTERS(FactOrders[Delivery Status] <> "Shipping canceled")
+    )
+
+RETURN
+    IF(
+        NonCanceledCount = 0,
+        BLANK(),
+        DIVIDE(OTIFOrders, TotalOrders)
+    )
+```
+
+**Description:** Proportion of non-canceled orders that were delivered both on time and in full. With the Order Quantity proxy, equals On-Time Delivery Rate % for this dataset. In production, diverges from On-Time Rate when fill rate falls below 100%.
+
+**Notes:**
+- Count-based formula — consistent with Late Delivery Rate % and On-Time Delivery Rate % pattern. See Entry #28.
+- `[Caution]` In Full condition uses Order Quantity as proxy for Shipped Quantity — Limitation #8. Every non-canceled order passes the In Full condition, making OTIF % equal to On-Time Delivery Rate % for this dataset. In production replace the right side of the condition with `FactOrders[Shipped Quantity]`.
+- NonCanceledCount FILTER guard — returns BLANK in canceled-only context. See Entry #24.
+- KEEPFILTERS preserves slicer responsiveness. See Entry #24.
+
+---
+
 ## \_Measures\Financial Impact
 
 ⬜ **Pending — Phase 3 build in progress.**
@@ -2071,6 +2220,30 @@ RETURN
 
 ---
 
+## Fill Rate Parameter `[Test]`
+
+⚠ **QA infrastructure only — remove before v1.0 publish.**
+
+Disconnected what-if parameter table supporting `OTIF % (Simulated)`. No schema relationship to any fact or dimension table by design — it exists solely to drive the Fill Rate Parameter slicer on the QA - Supply Performance page.
+
+### Fill Rate Parameter (column)
+
+**Table:** Fill Rate Parameter (disconnected)<br>
+**Format:** Whole number<br>
+
+**DAX:**
+```dax
+Fill Rate Parameter = GENERATESERIES(50, 100, 1)
+```
+
+**Notes:**
+- `[Test]` QA infrastructure only. Remove before v1.0 publish. See Entry #28.
+- Disconnected table — no relationship to FactOrders, DimProduct, DimCustomer, or DimDate by design.
+- Range 50–100 whole numbers. Represents fill rate percentage (50% = 0.50, 100% = 1.00).
+- Consumed by `[Fill Rate Parameter Value]` measure in `_Validation`.
+
+---
+
 ## ABC XYZ Cycle Count Schedule
 
 The combined ABC XYZ matrix is the industry-standard idea for tying cycle count frequency to both revenue concentration and demand variability. In this model, neither axis assigns cadence alone: `DimProduct[Cycle Count Schedule]` evaluates the pair (ABC tier letter + XYZ class letter), e.g. `AX` or `BZ`, and returns one label via `SWITCH`. **ABC tier** encodes how costly an inventory error is in revenue terms. **XYZ class** encodes demand variability (CV), a proxy for how easily system-to-physical error can stay hidden between counts. Together they yield nine active combinations (plus Inactive → Annual) with differentiated schedules.
@@ -2152,13 +2325,10 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.6 — Phase 3 DAX Layer (XYZ threshold recalibration)*<br>
-*Changes from v1.5:*
-- *XYZ Classification: thresholds updated from 3.96/10.91 to 3.99/11.48 — recalibrated post Entry #25 canceled order exclusion (Entry #27)*
-- *XYZ Classification (DimColumn): same threshold update (Entry #27)*
-- *CV 25th Percentile: validated value updated from 3.96 to 3.99 (Entry #27)*
-- *CV 75th Percentile: validated value updated from 10.91 to 11.48 (Entry #27)*
-- *XYZ Classification notes: CV distribution updated to post-exclusion values (Entry #27)*
-- *Cycle Count Schedule narrative: threshold references updated to 3.99/11.48 (Entry #27)*
-- *Cycle Count Schedule matrix header: threshold ranges updated (Entry #27)*<br>
-*Next Update: OTIF % added to Supply Performance*
+*Document Version: 1.7 — Phase 3 DAX Layer (OTIF % measures)*<br>
+*Changes from v1.6:*
+- *OTIF %: new Supply Performance measure — count-based, NonCanceledCount guard, KEEPFILTERS, In Full proxy per Limitation #8 (Entry #28)*
+- *OTIF % (Simulated): new _Validation measure — multiplicative formula, Fill Rate Parameter what-if slicer, remove before v1.0 (Entry #28)*
+- *Fill Rate Parameter Value: new _Validation measure — SELECTEDVALUE wrapper for Fill Rate Parameter slicer (Entry #28)*
+- *Fill Rate Parameter: new disconnected table — GENERATESERIES 50–100, no schema relationship by design, remove before v1.0 (Entry #28)*<br>
+*Next Update: Financial Impact measures*
