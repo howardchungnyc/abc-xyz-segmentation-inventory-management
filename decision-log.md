@@ -967,6 +967,35 @@ Six SKUs shifted from Y to Z after recalibration. This is expected — excluding
 
 ---
 
+## Entry #28 — OTIF %: Supply Performance Measure and QA Simulation Infrastructure
+
+**Date:** April 2026
+**Layer:** DAX Layer — Supply Performance folder and _Validation folder (FactOrders), Fill Rate Parameter disconnected table
+
+### Decision: Count-Based Formula Over Multiplicative Approximation
+
+OTIF % is implemented as a count-based formula: `OTIFOrders / TotalOrders`, where `OTIFOrders` counts rows satisfying both the on-time AND in-full conditions simultaneously. The multiplicative approximation (`On-Time Rate × Fill Rate`) is a common convenience decomposition but diverges from true OTIF when on-time and in-full performance are correlated — which is typical in real supply chains. Count-based is always correct.
+
+### Finding: In Full Condition Requires Shipped Quantity — Limitation #8
+
+DataCo has no Shipped Quantity column. The In Full condition (`FactOrders[Order Quantity] >= FactOrders[Order Quantity]`) is always TRUE — every non-canceled order passes. As a result, `OTIF % = On-Time Delivery Rate %` for this dataset.
+
+In production: replace the right side of the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed.
+
+### Decision: NonCanceledCount Guard and KEEPFILTERS — Same Pattern as Entry #24
+
+`OTIF %` follows the same canceled order exclusion pattern established in Entry #24:
+- NonCanceledCount FILTER guard returns BLANK in canceled-only context
+- KEEPFILTERS on all CALCULATE-based Delivery Status arguments preserves slicer responsiveness
+
+### Decision: Fill Rate Parameter and OTIF % (Simulated) as QA Scaffolding
+
+A `Fill Rate Parameter` disconnected table (`GENERATESERIES(50, 100, 1)`) and `OTIF % (Simulated)` multiplicative measure were added to demonstrate production behavior before a real Shipped Quantity column is available. At Fill Rate = 100, `OTIF % (Simulated)` matches `On-Time Delivery Rate %` exactly. At Fill Rate < 100, it diverges — showing the effect of imperfect fill rate on OTIF.
+
+Both measures are QA scaffolding — `_Validation` folder only, remove before v1.0 publish.
+
+---
+
 *Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
 *Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
 *Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
@@ -974,4 +1003,5 @@ Six SKUs shifted from Y to Z after recalibration. This is expected — excluding
 *Phase 3 Entry #25: Inventory Planning canceled order exclusion — KEEPFILTERS on Avg Daily Demand TotalUnits CALCULATE block, plain FILTER predicate condition on Demand Std Dev (Daily), deprecated references fixed in Coefficient of Variation, XYZ Classification (DimColumn), Cycle Count Schedule, SKU Count - Unclassified, cascade through all dependent measures confirmed*
 *Phase 3 Entry #26: Simulated Inventory Level redesign — three-state ROP-anchored design, SKU Revenue Rank (DimColumn) as MOD input, validated 11/36/71 distribution, rank tie resolved post Entry #25 exclusion*
 *Phase 3 Entry #27: XYZ threshold recalibration — thresholds updated from 3.96/10.91 to 3.99/11.48, CV distribution shift documented, SKU distribution change confirmed*
-*Next Update: OTIF % added to Supply Performance*
+*Phase 3 Entry #28: OTIF % added to Supply Performance — count-based formula, NonCanceledCount guard, KEEPFILTERS, In Full proxy per Limitation #8; Fill Rate Parameter and OTIF % (Simulated) added as QA scaffolding*
+*Next Update: Financial Impact measures*

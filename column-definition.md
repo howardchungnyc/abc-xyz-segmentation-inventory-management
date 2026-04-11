@@ -310,6 +310,18 @@ Evaluated at **model refresh**. Folder in model: **Inventory Segmentation**. Ful
 
 ---
 
+## Fill Rate Parameter — 51 Rows (disconnected table) `[Test]`
+
+⚠ **QA infrastructure only — remove before v1.0 publish.**
+
+Disconnected what-if parameter table. No relationship to any fact or dimension table by design. Drives the Fill Rate Parameter slicer on the QA - Supply Performance page.
+
+| Column | Data Type | Notes |
+|---|---|---|
+| `Fill Rate Parameter` | Whole Number | Generated values 50–100 (whole numbers). Represents fill rate percentage. Consumed by `[Fill Rate Parameter Value]` measure. See Entry #28. |
+
+---
+
 ## Data Type Reference
 
 
@@ -340,6 +352,6 @@ Evaluated at **model refresh**. Folder in model: **Inventory Segmentation**. Ful
 
 ---
 
-*Document Version: 1.5 — Phases 1–3: ETL + model layer + DimProduct calculated columns*
-*Changes from v1.4:*
-- *XYZ Classification (DimColumn): CV threshold values updated from 3.96/10.91 to 3.99/11.48 (Entry #27)*
+*Document Version: 1.6 — Phases 1–3: ETL + model layer + DimProduct calculated columns + QA infrastructure*
+*Changes from v1.5:*
+- *Fill Rate Parameter: new disconnected table section added — QA infrastructure, remove before v1.0 (Entry #28)*
