@@ -31,8 +31,9 @@
 5. [\_Measures\Inventory Planning](#measuresinventory-planning)
 6. [\_Measures\Inventory Segmentation](#measuresinventory-segmentation)
 7. [\_Measures\Supply Performance](#measuressupply-performance)
-8. [\_Measures\Financial Impact](#measuresfinancial-impact)
-9. [\_Measures\Trend Analysis](#measurestrend-analysis)
+8. [\_Measures\Financial Performance](#measuresfinancial-performance)
+9. [\_Measures\Executive KPIs](#measuresexecutive-kpis)
+10. [\_Measures\Trend Analysis](#measurestrend-analysis)
 10. [DimProduct Calculated Columns](#dimproduct-calculated-columns)
 11. [ABC XYZ Cycle Count Schedule](#abc-xyz-cycle-count-schedule)
 12. [Build Order Reference](#build-order-reference)
@@ -115,14 +116,20 @@ FactOrders
 │   │   ├── On-Time Delivery Rate %
 │   │   └── OTIF %
 │   │
-│   ├── Financial Impact               ⬜ Pending
+│   ├── Financial Performance
 │   │   ├── Avg Margin % by ABC Tier
 │   │   ├── Carrying Cost Estimate
 │   │   ├── Gross Profit by ABC Tier
 │   │   ├── Implied COGS
 │   │   ├── Pareto Concentration Ratio
-│   │   ├── Revenue at Risk (Supply)
+│   │   ├── Revenue Exposed to Supplier Late Delivery
 │   │   └── Revenue at Risk (Stockout)
+│   │
+│   ├── Executive KPIs                 ⬜ Pending
+│   │   ├── DIO (Days Inventory Outstanding)
+│   │   ├── GMROI (Gross Margin Return on Inventory Investment)
+│   │   ├── Inventory Turns
+│   │   └── SLOB Exposure (Slow-Moving and Obsolete)
 │   │
 │   └── Trend Analysis                 ⬜ Pending
 │       ├── Revenue vs Prior Period
@@ -1933,27 +1940,292 @@ RETURN
 
 ---
 
-## \_Measures\Financial Impact
+## \_Measures\Financial Performance
 
-⬜ **Pending — Phase 3 build in progress.**
+All measures in this folder inherit canceled order exclusion from their base measure dependencies (`[Total Revenue]`, `[Total Gross Profit]`, `[Total Units Sold]`). See [decision-log.md](./decision-log.md) Entry #23.
 
-Measures to be built:
+**Why Simulated Inventory Level is excluded from this folder:**
+`DimProduct[Simulated Inventory Level]` was designed as a reorder trigger simulation — inventory is set to 0, 50% of ROP, or 150% of ROP to test reorder flag states. It is sized around the reorder point, not average on-hand inventory. Using it as the denominator in financial ratios produces Inventory Turns of ~176x and DIO of ~2 days against three years of actual COGS throughput. These values are arithmetically correct but do not reflect realistic inventory economics. The COGS figure covers three years of sales; the inventory figure covers a snapshot near the reorder level threshold. The result is not a valid Inventory Turns figure. `Simulated Inventory Level` is intentionally restricted to replenishment decision measures only: `[Reorder Flag]`, `[Stock Coverage (Days)]`, and `[Revenue at Risk (Stockout)]` (detection only). See [decision-log.md](./decision-log.md) Entry #29.
 
-| Measure | Description | Data type |
-|---|---|---|
-| `Implied COGS` | `[Total Revenue] - [Total Gross Profit]` | Real data |
-| `Gross Profit by ABC Tier` | Gross profit filtered to A/B/C tier | Real data |
-| `Avg Margin % by ABC Tier` | Average profit margin by tier | Real data |
-| `Pareto Concentration Ratio` | % of SKUs driving 80% of revenue | Real data |
-| `Carrying Cost Estimate` | Inventory value × 25% annual rate (APICS standard) | Modeled estimate `[Caution]` |
-| `Revenue at Risk (Supply)` | A-tier revenue × Late Delivery Rate % — exposure to late supplier delivery | Real data |
-| `Revenue at Risk (Stockout)` | Flagged SKUs × Avg Daily Demand × Avg Lead Time × Unit Price — potential lost revenue during active stockout window | Modeled estimate `[Test]` |
+**Financial inventory baseline — cycle stock model:**
+Measures that require an inventory value denominator use the APICS cycle stock model: `Safety Stock + (Target Replenishment Days × Avg Daily Demand) / 2`. The division by 2 reflects how inventory moves through a replenishment cycle — stock depletes linearly from a full batch at the start of the cycle to zero at the end. Average on-hand across the cycle is half the batch. Safety Stock sits below this as a permanent buffer floor. Both inputs are demand-based and computed over the trailing 12-month window. See Entry #29.
 
-**Carrying cost rate:** 25% annual. APICS standard range 20–30%. Components: capital cost ~12%, storage ~4%, obsolescence/shrinkage ~5%, insurance/taxes ~4%. Source: APICS CPIM Body of Knowledge.
+**What is and is not estimated from summary statistics:**
+The cycle stock component can be estimated from validated dataset totals: total avg daily demand = 367,591 units (Total Units Sold) / 1,126 days (Jan 1, 2015 to Jan 31, 2018) = 326.5 units/day; weighted avg target days across 29X/54Y/35Z = 44.2 days; estimated cycle stock units = (44.2 × 326.5) / 2 ≈ 7,215 units; estimated cycle stock value = 7,215 × $85.45 (Implied COGS $31,408,008 / Total Units Sold 367,591) ≈ $616,500. The safety stock component requires per-SKU Avg Daily Demand and Demand Std Dev (Daily), which the model computes at row level but which cannot be derived from dataset totals. Actual KPI output values are only known after the model computes them. See Entry #29.
 
-**Revenue at Risk note:** Two measures answer different questions:
-- `Revenue at Risk (Supply)` — how much A-tier revenue is exposed to late supplier delivery? Uses only real data.
-- `Revenue at Risk (Stockout)` — how much revenue could be lost during active stockout windows? Labeled as modeled estimate — depends on simulated inventory.
+**ADDCOLUMNS(SUMMARIZE()) pattern:**
+To compute total estimated inventory value, the model needs to call `[Safety Stock]` and `[Avg Daily Demand by SKU]` for each of the 118 products individually and sum the results. `[Safety Stock]` is guarded by `ISINSCOPE(DimProduct[Product Name])`, which returns BLANK unless Product Name is acting as a grouping axis — the way it does in a table visual with Product Name on rows. A plain `SUMX(DimProduct, CALCULATE([Safety Stock]))` filters by Product Name on each row but does not group by it. ISINSCOPE returns FALSE, Safety Stock returns BLANK for every row, and the sum is zero. `ADDCOLUMNS(SUMMARIZE(FactOrders, DimProduct[Product Name]), ...)` creates a table where Product Name is the grouping axis, activating ISINSCOPE correctly. Safety Stock returns the correct per-SKU value for each row and the sum is accurate. See Entry #29.
+
+**Folder name:** Financial Performance — aligned with APICS CPIM inventory financial metrics layer. Previously named "Financial Impact" in planning documentation. Renamed for APICS taxonomy consistency. See [decision-log.md](./decision-log.md) Entry #16.
+
+---
+
+### Implied COGS
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Currency, 2 decimal places<br>
+**Dependencies:** `[Total Revenue]`, `[Total Gross Profit]`<br>
+
+```dax
+Implied COGS =
+-- No dedicated COGS column in source data. See Limitation #2.
+-- Derived: Total Revenue - Total Gross Profit.
+-- Canceled order exclusion inherited from both dependent measures. See Entry #23.
+[Total Revenue] - [Total Gross Profit]
+```
+
+**Description:** Estimated cost of goods sold derived from revenue and gross profit. Cost basis for all financial ratio calculations in this folder and Executive KPIs.
+
+**Notes:**
+- Validated value: **$31,408,008.35** ($35,214,428.98 - $3,806,420.63).
+- `[Caution]` Derived figure: not a direct source column. See Limitation #2.
+- Primary cost input to `[Carrying Cost Estimate]`, `[Inventory Turns]`, `[GMROI]`, `[DIO]`, `[SLOB Exposure]`, and `[Revenue at Risk (Stockout)]`.
+
+---
+
+### Gross Profit by ABC Tier
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Currency, 2 decimal places<br>
+**Dependencies:** `[Total Gross Profit]`, `DimProduct[ABC Tier (Classification)]`<br>
+
+```dax
+Gross Profit by ABC Tier =
+-- Gross profit segmented at ABC tier grain.
+-- Excludes Inactive tier -- near-zero revenue rows distort tier comparisons.
+-- KEEPFILTERS intersects exclusion with existing slicer context. See Entry #23.
+-- Canceled orders excluded via [Total Gross Profit]. See Entry #23.
+CALCULATE(
+    [Total Gross Profit],
+    KEEPFILTERS(DimProduct[ABC Tier (Classification)] <> "Inactive")
+)
+```
+
+**Description:** Gross profit for active ABC tier SKUs in the current filter context. Use in a matrix or table with `DimProduct[ABC Tier (Classification)]` on rows.
+
+**Notes:**
+- At total grain: returns gross profit across A+B+C SKUs only, excluding Inactive.
+- Inactive produces near-zero gross profit by definition. Exclusion prevents visual noise.
+
+---
+
+### Avg Margin % by ABC Tier
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Percentage, 2 decimal places<br>
+**Dependencies:** `[Total Gross Profit]`, `[Total Revenue]`, `DimProduct[ABC Tier (Classification)]`<br>
+
+```dax
+Avg Margin % by ABC Tier =
+-- Aggregate margin for active ABC tier SKUs in current filter context.
+-- Formula: Total Gross Profit / Total Revenue -- weighted by revenue volume.
+-- Excludes Inactive tier -- zero-revenue SKUs distort margin % at tier level.
+-- Not equivalent to [Avg Profit Margin %] which averages per-order profit ratio.
+-- Canceled orders excluded via dependent measures. See Entry #23.
+CALCULATE(
+    DIVIDE([Total Gross Profit], [Total Revenue]),
+    KEEPFILTERS(DimProduct[ABC Tier (Classification)] <> "Inactive")
+)
+```
+
+**Description:** Profit margin % for active ABC tier SKUs. Use in a matrix or table with `DimProduct[ABC Tier (Classification)]` on rows to compare margin performance across tiers.
+
+**Notes:**
+- Validated at total grain (A+B+C): **10.81%** — confirmed on QA - Financial Performance page.
+- Uses aggregate margin (Total Gross Profit / Total Revenue), not a per-order average. This weights margin by revenue volume, which is the correct basis for financial tier comparison.
+- `[Avg Profit Margin %]` in Core Measures uses AVERAGE of per-order profit ratio and produces a different result (12.08%). The two measures are not equivalent and are designed for different report contexts.
+
+---
+
+### Pareto Concentration Ratio
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Percentage, 2 decimal places<br>
+**Dependencies:** `DimProduct[ABC Tier (Classification)]`<br>
+
+```dax
+Pareto Concentration Ratio =
+-- % of catalog SKUs driving 80% of revenue (A-tier count / total SKU count).
+-- Quantifies revenue concentration: lower % = more concentrated in fewer SKUs.
+-- [Fixed Context]: ABC classification uses fixed 12-month trailing window.
+-- Result is static under date slicer changes -- ABC tiers do not shift with date filters.
+-- ALL(DimProduct) in both VARs: ratio always reflects full 118-SKU catalog.
+-- Without ALL, a single-tier slicer returns 100% -- meaningless. See Entry #17.
+
+VAR ATierCount =
+    CALCULATE(
+        COUNTROWS(DimProduct),
+        ALL(DimProduct),
+        DimProduct[ABC Tier (Classification)] = "A"
+    )
+
+VAR TotalSKUs =
+    CALCULATE(
+        COUNTROWS(DimProduct),
+        ALL(DimProduct)
+    )
+
+RETURN
+    DIVIDE(ATierCount, TotalSKUs)
+```
+
+**Description:** Percentage of total catalog SKUs driving 80% of revenue. Quantifies how concentrated the revenue base is. Lower % means fewer SKUs carry more revenue risk.
+
+**Notes:**
+- `[Fixed Context]` Validated value: **9.32%** (11 A-tier SKUs / 118 total SKUs). Does not respond to date slicers.
+- Denominator includes all 118 SKUs including Inactive (standard Pareto reporting convention).
+
+---
+
+### Carrying Cost Estimate `[Caution]`
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Currency, 2 decimal places<br>
+**Dependencies:** `[Safety Stock]`, `[Avg Daily Demand by SKU]`, `[Implied COGS]`, `[Total Units Sold]`, `DimProduct[XYZ Classification (DimColumn)]`<br>
+
+```dax
+Carrying Cost Estimate =
+-- Formula: Estimated Average Inventory Value * 25% annual carrying rate.
+-- Inventory basis: Safety Stock + (Target Days * Avg Daily Demand) / 2 per SKU.
+-- Target days by XYZ tier: X=60, Y=45, Z=30. See Entry #29.
+-- [Fixed Context]: Avg Daily Demand and Safety Stock use trailing 12-month window.
+-- Date slicers do not affect inventory quantity. ABC/XYZ slicers narrow product scope.
+-- [Caution]: inputs are modeled from historical demand, not a live WMS snapshot. See Limitation #1.
+-- ADDCOLUMNS(SUMMARIZE()) activates ISINSCOPE for Safety Stock. See Entry #29.
+
+VAR EstInventoryValue =
+    SUMX(
+        ADDCOLUMNS(
+            SUMMARIZE(FactOrders, DimProduct[Product Name]),
+            "AvgOnHand",
+                VAR SKUXYZTier =
+                    SELECTEDVALUE(DimProduct[XYZ Classification (DimColumn)])
+                VAR TargetDays =
+                    SWITCH(SKUXYZTier, "X", 60, "Y", 45, "Z", 30, 0)
+                VAR AvgDemand = [Avg Daily Demand by SKU]
+                VAR SS = [Safety Stock]
+                RETURN
+                    IF(ISBLANK(SS), 0, SS + DIVIDE(TargetDays * AvgDemand, 2)),
+            "UnitCost",
+                DIVIDE([Implied COGS], [Total Units Sold])
+        ),
+        [AvgOnHand] * [UnitCost]
+    )
+
+RETURN
+    IF(
+        ISBLANK(EstInventoryValue) || EstInventoryValue = 0,
+        BLANK(),
+        EstInventoryValue * 0.25
+    )
+```
+
+**Description:** Estimated annual cost of carrying the modeled inventory position. Formula: estimated average inventory value × 25% annual carrying rate.
+
+**Notes:**
+- `[Caution]` Inventory value is modeled from demand inputs, not a live WMS snapshot. See Limitation #1.
+- Responds to ABC and XYZ tier slicers. `SUMX` iterates `DimProduct` rows in current filter context.
+- Actual output value only known after model computation. See Entry #29.
+- In production: `[Safety Stock]` and `[Avg Daily Demand]` inputs update automatically from live WMS/ERP data. No formula changes needed.
+
+---
+
+### Revenue Exposed to Supplier Late Delivery
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Currency, 2 decimal places<br>
+**Dependencies:** `[Total Revenue]`, `[Late Delivery Rate %]`<br>
+
+**DAX:**
+```dax
+Revenue Exposed to Supplier Late Delivery =
+-- Revenue tied to orders where the supplier missed the scheduled delivery window.
+-- Formula: Total Revenue * Late Delivery Rate %.
+-- Late delivery is a supplier fulfillment failure -- actual shipping days exceeded scheduled.
+-- Use in a matrix with DimProduct[ABC Tier (Classification)] on rows for tier breakdown.
+-- Canceled orders excluded via dependent measures. See Entry #23, Entry #24.
+
+VAR TierRevenue = [Total Revenue]
+VAR LateRate = [Late Delivery Rate %]
+
+RETURN
+    IF(
+        ISBLANK(LateRate),
+        BLANK(),
+        TierRevenue * LateRate
+    )
+```
+
+**Description:** Revenue tied to orders where the supplier missed the scheduled delivery window. Quantifies the dollar value of fulfilled orders affected by supplier delivery failures. Use in a matrix with `DimProduct[ABC Tier (Classification)]` on rows to see exposure by tier.
+
+**Notes:**
+- Real data only. No `[Caution]` tag. Both inputs are directly from source data.
+- Late delivery reflects supplier performance — actual shipping days exceeded scheduled shipping days per order. This is not a measure of internal operations failure.
+- At total grain: total catalog revenue exposed to supplier late delivery. In a matrix by ABC tier, A-tier shows the highest exposure because it carries the most revenue.
+
+---
+
+### Revenue at Risk (Stockout) `[Test]`
+
+**Table:** FactOrders<br>
+**Folder:** Financial Performance<br>
+**Format:** Currency, 2 decimal places<br>
+**Dependencies:** `DimProduct[Simulated Inventory Level]`, `[Avg Daily Demand by SKU]`, `[Avg Lead Time (Actual)]`, `[Implied COGS]`, `[Total Units Sold]`<br>
+
+**DAX:**
+```dax
+Revenue at Risk (Stockout) =
+-- Estimated revenue at risk from active stockout events during replenishment windows.
+-- [Test]: Simulated Inventory Level used ONLY for stockout SKU detection. See Limitation #1.
+--   Detection condition: Simulated Inventory Level = 0 (Stockout state per Entry #26).
+--   Simulated inventory does NOT appear in the exposure calculation -- only in detection.
+--   This is the one measure in this folder that uses Simulated Inventory Level, and only
+--   to identify which SKUs are currently in a stockout state. See Entry #29.
+--
+-- EXPOSURE FORMULA per stockout SKU: Avg Daily Demand * Avg Lead Time * Avg Unit Cost.
+--   Avg Lead Time = replenishment window length (how long the stockout persists).
+--   Avg Unit Cost = Implied COGS / Total Units Sold (per-SKU cost basis).
+--   DatasetLeadTime: ALL(FactOrders) average -- no per-SKU lead time in source. See Limitation #8.
+--
+-- Canceled orders excluded via dependent measures. See Entry #23, #25.
+
+VAR DatasetLeadTime =
+    CALCULATE(
+        [Avg Lead Time (Actual)],
+        ALL(FactOrders)
+    )
+
+RETURN
+    SUMX(
+        FILTER(
+            SUMMARIZE(FactOrders, DimProduct[Product Name]),
+            CALCULATE(
+                SELECTEDVALUE(DimProduct[Simulated Inventory Level])
+            ) = 0
+        ),
+        VAR SKUDemand = CALCULATE([Avg Daily Demand by SKU])
+        VAR SKUCost =
+            DIVIDE(
+                CALCULATE([Implied COGS]),
+                CALCULATE([Total Units Sold])
+            )
+        RETURN
+            IF(ISBLANK(SKUDemand), 0, SKUDemand * DatasetLeadTime * SKUCost)
+    )
+```
+
+**Description:** Estimated revenue lost during active stockout replenishment windows. Simulated inventory identifies stockout state; demand-based math quantifies the exposure.
+
+**Notes:**
+- `[Test]` Stockout detection uses simulated inventory. Exposure calculation does not. 11 stockout SKUs per validated Entry #26 distribution.
+- Dataset-wide lead time used as replenishment window. Per-SKU lead time not available in source. See Limitation #8.
+- In production: replace stockout detection filter with live WMS on-hand = 0 condition. Exposure formula requires no changes.
 
 ---
 
@@ -2289,8 +2561,9 @@ Operationally, count frequency is always a joint outcome of that pair—not “X
 | 3 - Supply Performance | All six lead time measures | Layer 1 complete |
 | 4 - Inventory Planning | Avg Daily Demand by SKU, Demand Std Dev (Daily), Coefficient of Variation (**Note: Layer 4 build sequence only**), XYZ Classification, Safety Stock, Reorder Point, Reorder Quantity, Reorder Flag, Stock Coverage (Days) | Layers 2 and 3 complete |
 | 4a - DimProduct columns | SKU Revenue Rank (DimColumn), XYZ Classification (DimColumn), Simulated Inventory Level, Cycle Count Schedule | Layer 4 complete |
-| 5 - Financial Impact | Implied COGS, Gross Profit by ABC Tier, Avg Margin % by ABC Tier, Pareto Concentration Ratio, Carrying Cost Estimate, Revenue at Risk (Supply), Revenue at Risk (Stockout) | Layers 1–4 complete |
-| 6 - Trend Analysis | Revenue YoY, Revenue vs Prior Period, Rolling 90-Day Demand | Layer 1 complete |
+| 5 - Financial Performance | Implied COGS, Gross Profit by ABC Tier, Avg Margin % by ABC Tier, Pareto Concentration Ratio, Carrying Cost Estimate, Revenue Exposed to Supplier Late Delivery, Revenue at Risk (Stockout) | Layers 1–4 complete |
+| 6 - Executive KPIs | Inventory Turns, GMROI, DIO, SLOB Exposure | Layer 5 complete (Implied COGS required) |
+| 7 - Trend Analysis | Revenue YoY, Revenue vs Prior Period, Rolling 90-Day Demand | Layer 1 complete |
 
 ---
 
@@ -2325,10 +2598,12 @@ Demand Std Dev (Daily) ──► Coefficient of Variation ──► XYZ Classifi
 
 ---
 
-*Document Version: 1.7 — Phase 3 DAX Layer (OTIF % measures)*<br>
-*Changes from v1.6:*
-- *OTIF %: new Supply Performance measure — count-based, NonCanceledCount guard, KEEPFILTERS, In Full proxy per Limitation #8 (Entry #28)*
-- *OTIF % (Simulated): new _Validation measure — multiplicative formula, Fill Rate Parameter what-if slicer, remove before v1.0 (Entry #28)*
-- *Fill Rate Parameter Value: new _Validation measure — SELECTEDVALUE wrapper for Fill Rate Parameter slicer (Entry #28)*
-- *Fill Rate Parameter: new disconnected table — GENERATESERIES 50–100, no schema relationship by design, remove before v1.0 (Entry #28)*<br>
-*Next Update: Financial Impact measures*
+*Document Version: 1.8 — Phase 3 DAX Layer (Financial Performance)*<br>
+*Changes from v1.7:*
+- *Folder tree: "Financial Impact" renamed to "Financial Performance" (APICS taxonomy alignment, Entry #29)*
+- *Folder tree: Executive KPIs folder added as pending (4 measures scoped)*
+- *TOC: updated section 8 anchor, added section 9 (Executive KPIs)*
+- *Financial Performance: all 7 measures built — Implied COGS, Gross Profit by ABC Tier, Avg Margin % by ABC Tier, Pareto Concentration Ratio, Carrying Cost Estimate, Revenue Exposed to Supplier Late Delivery, Revenue at Risk (Stockout)*
+- *Carrying Cost Estimate: full inline commentary — division-by-2 rationale, sourced dataset inputs, Simulated Inventory exclusion, ADDCOLUMNS/SUMMARIZE pattern (Entry #29)*
+- *Build Order Reference: Layer 5 renamed, Layer 6 placeholder added*<br>
+*Next Update: Executive KPIs measures*

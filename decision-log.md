@@ -2,7 +2,7 @@
 
 ## ABC XYZ Inventory Segmentation & Management
 
-### Power BI Project — Phases 1–3 (ETL + Model Layer + DAX Layer)
+### Power BI Project: Phases 1–3 (ETL + Model Layer + DAX Layer)
 
 ---
 
@@ -10,9 +10,51 @@
 
 ---
 
-## Phase 1 — ETL Data Preparation Layer
+## Table of Contents
 
-## Entry #1 — Single Source Data Staging (MasterSet)
+### Phase 1: ETL Data Preparation Layer
+
+- [Entry #1: Single Source Data Staging (MasterSet)](#entry-1-single-source-data-staging-masterset)
+- [Entry #2: Auto-Updating DimDate Table with 1-Year Buffer](#entry-2-auto-updating-dimdate-table-with-1-year-buffer)
+- [Entry #3: Dynamic Late Delivery Risk Rule](#entry-3-dynamic-late-delivery-risk-rule)
+- [Entry #4: Two Late-Risk Fields for Different Uses](#entry-4-two-late-risk-fields-for-different-uses)
+- [Entry #5: Consistent Column Ordering Standard](#entry-5-consistent-column-ordering-standard)
+
+### Phase 2: Model Layer
+
+- [Entry #6: Sort By Column Assignments](#entry-6-sort-by-column-assignments)
+- [Entry #7: Hidden Columns](#entry-7-hidden-columns)
+- [Entry #8: Default Summarization](#entry-8-default-summarization)
+- [Entry #9: Display Folders on FactOrders](#entry-9-display-folders-on-factorders)
+- [Entry #10: Power Query Groups](#entry-10-power-query-groups)
+- [Entry #11: Date Hierarchies on DimDate](#entry-11-date-hierarchies-on-dimdate)
+- [Entry #12: Shared DimDate: Order Date vs. Shipping Date (dual relationships)](#entry-12-shared-dimdate-order-date-vs-shipping-date-dual-relationships)
+- [Entry #13: FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization](#entry-13-factorders-line-item-grain-primary-key-and-order-header-denormalization)
+- [Entry #14: Model Validation Suite](#entry-14-model-validation-suite)
+- [Entry #15: Model Validation Page Preserved](#entry-15-model-validation-page-preserved)
+
+### Phase 3: DAX Measures Layer
+
+- [Entry #16: QA Validation Pages and Measure Display Folder Naming](#entry-16-qa-validation-pages-and-measure-display-folder-naming)
+- [Entry #17: Inventory Segmentation: ABC and XYZ Classification](#entry-17-inventory-segmentation-abc-and-xyz-classification)
+- [Entry #18: Core Measures](#entry-18-core-measures)
+- [Entry #19: Supply Performance Measures](#entry-19-supply-performance-measures)
+- [Entry #20: Inventory Planning: Safety Stock and Replenishment Design](#entry-20-inventory-planning-safety-stock-and-replenishment-design)
+- [Entry #21: Simulated Inventory: Testing Infrastructure](#entry-21-simulated-inventory-testing-infrastructure)
+- [Entry #22: Cycle Count Schedule: ABC XYZ Combined Matrix](#entry-22-cycle-count-schedule-abc-xyz-combined-matrix)
+- [Entry #23: Core Measures: Canceled Order Exclusion](#entry-23-core-measures-canceled-order-exclusion)
+- [Entry #24: Supply Performance: Canceled Order Exclusion, FILTER Guard, Count-Based Rate Measures](#entry-24-supply-performance-canceled-order-exclusion-filter-guard-count-based-rate-measures)
+- [Entry #25: Inventory Planning: Canceled Order Exclusion](#entry-25-inventory-planning-canceled-order-exclusion)
+- [Entry #26: Simulated Inventory Level Redesign](#entry-26-simulated-inventory-level-redesign)
+- [Entry #27: XYZ Threshold Recalibration Post Canceled Order Exclusion](#entry-27-xyz-threshold-recalibration-post-canceled-order-exclusion)
+- [Entry #28: OTIF %: Supply Performance Measure and QA Simulation Infrastructure](#entry-28-otif-supply-performance-measure-and-qa-simulation-infrastructure)
+- [Entry #29: Financial Performance: Simulated Inventory Exclusion, Cycle Stock Model, ADDCOLUMNS Pattern](#entry-29-financial-performance-simulated-inventory-exclusion-cycle-stock-model-addcolumns-pattern)
+
+---
+
+## Phase 1: ETL Data Preparation Layer
+
+### Entry #1: Single Source Data Staging (MasterSet)
 
 **Date:** March 2026  
 
@@ -51,7 +93,7 @@ CSV Source
 
 ---
 
-## Entry #2 — Auto-Updating DimDate Table with 1-Year Buffer
+### Entry #2: Auto-Updating DimDate Table with 1-Year Buffer
 
 **Date:** March 2026  
 
@@ -86,7 +128,7 @@ EndDate    = Date.EndOfYear(Date.AddYears(MaxDate, 1))
 
 ---
 
-## Entry #3 — Dynamic Late Delivery Risk Rule
+### Entry #3: Dynamic Late Delivery Risk Rule
 
 **Date:** March 2026  
 
@@ -121,7 +163,7 @@ Is Late Delivery Risk = [Lead Time Variance] > 0
 
 ---
 
-## Entry #4 — Two Late-Risk Fields for Different Uses
+### Entry #4: Two Late-Risk Fields for Different Uses
 
 **Date:** March 2026  
 
@@ -160,7 +202,7 @@ Late Orders = CALCULATE(COUNTROWS(FactOrders), FactOrders[Is Late Delivery Risk]
 
 ---
 
-## Entry #5 — Consistent Column Ordering Standard
+### Entry #5: Consistent Column Ordering Standard
 
 **Date:** March 2026  
 
@@ -183,9 +225,9 @@ Without a fixed column order, query outputs become inconsistent, harder to scan,
 
 ---
 
-## Phase 2 — Model Layer (Semantic Model)
+## Phase 2: Model Layer (Semantic Model)
 
-## Entry #6 — Sort By Column Assignments
+### Entry #6: Sort By Column Assignments
 
 **Date:** March 2026  
 
@@ -206,7 +248,7 @@ Power BI's default sort for text is alphabetical. Month names like "Apr" and "Ja
 
 ---
 
-## Entry #7 — Hidden Columns
+### Entry #7: Hidden Columns
 
 **Date:** March 2026  
 
@@ -220,7 +262,7 @@ Hiding these fields keeps day-to-day reporting focused on names, dates, and meas
 
 ---
 
-## Entry #8 — Default Summarization
+### Entry #8: Default Summarization
 
 **Date:** March 2026  
 
@@ -238,7 +280,7 @@ Prevents implicit aggregation mistakes. Phase 3 DAX measures own all intentional
 
 ---
 
-## Entry #9 — Display Folders on FactOrders
+### Entry #9: Display Folders on FactOrders
 
 **Date:** March 2026  
 
@@ -252,7 +294,7 @@ Improves field-list navigation during DAX measure authoring.
 
 ---
 
-## Entry #10 — Power Query Groups
+### Entry #10: Power Query Groups
 
 **Date:** March 2026  
 
@@ -268,7 +310,7 @@ Makes the ETL architecture readable without opening individual queries.
 
 ---
 
-## Entry #11 — Date Hierarchies on DimDate
+### Entry #11: Date Hierarchies on DimDate
 
 **Date:** March 2026  
 
@@ -285,7 +327,7 @@ Custom hierarchies match calendar attributes and sort keys, so drill-down order 
 
 ---
 
-## Entry #12 — Shared DimDate: Order Date vs. Shipping Date (dual relationships)
+### Entry #12: Shared DimDate: Order Date vs. Shipping Date (dual relationships)
 
 **Date:** March 2026  
 
@@ -299,7 +341,7 @@ Custom hierarchies match calendar attributes and sort keys, so drill-down order 
 
 ---
 
-## Entry #13 — FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization
+### Entry #13: FactOrders: Line-Item Grain, Primary Key, and Order-Header Denormalization
 
 **Date:** March 2026  
 
@@ -330,7 +372,7 @@ That two-grain fact pattern is standard in enterprise-scale order domains when b
 
 ---
 
-## Entry #14 — Model Validation Suite
+### Entry #14: Model Validation Suite
 
 **Date:** March 2026  
 
@@ -346,6 +388,7 @@ Validation measures live in `FactOrders` under the `_Validation` display folder.
 
 **Tests and Results:**
 
+
 | Test                 | Expected     | Result |
 | -------------------- | ------------ | ------ |
 | Row Count Integrity  | 180,519      | Pass   |
@@ -356,9 +399,10 @@ Validation measures live in `FactOrders` under the `_Validation` display folder.
 | Customer Match Check | 180,519      | Pass   |
 | Product Match Check  | 180,519      | Pass   |
 
+
 ---
 
-## Entry #15 — Model Validation Page Preserved
+### Entry #15: Model Validation Page Preserved
 
 **Date:** March 2026  
 
@@ -374,9 +418,9 @@ The page is a reference for anyone opening the file later: it shows what was tes
 
 ---
 
-## Phase 3 — DAX Measures Layer
+## Phase 3: DAX Measures Layer
 
-## Entry #16 — QA Validation Pages and Measure Display Folder Naming
+### Entry #16: QA Validation Pages and Measure Display Folder Naming
 
 **Date:** March 2026
 
@@ -386,6 +430,7 @@ The page is a reference for anyone opening the file later: it shows what was tes
 Retain QA measure validation pages in the shipped `.pbix` for each phase of measure development. Pages are prefixed `QA -` to distinguish infrastructure from business report pages. Infrastructure folders `_Deprecated` and `_Validation` retain underscore prefix.
 
 **Rationale:** Validation pages to audit measures.
+
 
 | Page                          | Purpose                                                                                                                                                      |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -397,8 +442,10 @@ Retain QA measure validation pages in the shipped `.pbix` for each phase of meas
 | `QA - Financial Impact`       | `P&L Impact`                                                                                                                                                 |
 | `QA - Trend Analysis`         | `Time Intelligence`                                                                                                                                          |
 
+
 **Decision 2: Measure Display Folder Names - APICS/SCOR Alignment:**
 Display folder labels align with APICS CPIM Body of Knowledge and SCOR Model functional domain terminology used by enterprise supply chain operations.
+
 
 | Display Folder           | Replaces                       | Canonical Source                                                                                      |
 | ------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -409,9 +456,10 @@ Display folder labels align with APICS CPIM Body of Knowledge and SCOR Model fun
 | `Financial Impact`       | `P&L Impact`                   | Enterprise BI convention - more precise than P&L which implies a full income statement                |
 | `Trend Analysis`         | `Time Intelligence`            | Enterprise BI convention - Time Intelligence is a Power BI developer term, not a business term        |
 
+
 ---
 
-## Entry #17 - Inventory Segmentation: ABC and XYZ Classification
+### Entry #17: Inventory Segmentation: ABC and XYZ Classification
 
 **Date:** March 2026  
 
@@ -443,10 +491,12 @@ Products with zero or blank revenue in the trailing window are flagged as **Inac
 **ABC XYZ Decoupling:**
 ABC and XYZ answer different questions and must drive different outputs. Conflating them produces incorrect reorder quantities, e.g. a high-price slow-mover classified A-tier by revenue needs a larger safety stock buffer, not more frequent orders.
 
+
 | Dimension | Question                            | Outputs                                       |
 | --------- | ----------------------------------- | --------------------------------------------- |
 | ABC       | How much does a stockout cost?      | Service level Z-score → `Safety Stock` buffer |
 | XYZ       | How predictably does this SKU sell? | How much to reorder → Reorder Quantity        |
+
 
 **Safety Stock Formula — Combined Variance (APICS Standard):**
 
@@ -468,13 +518,16 @@ CV normalizes variability across SKUs of different sales volumes, so a high-volu
 **Why Standard CV Thresholds Don't Apply:**
 Standard thresholds (CV ≤ 0.5 = X, 0.5–1.0 = Y, > 1.0 = Z) assume moderate-to-high velocity demand. 81% of this dataset sell less than 1 unit per day. Near-zero average demand mathematically produces very high CV values, classifying a significant majority of this catalog's SKUs as Z with no useful segmentation. Thresholds set at 25th and 75th percentiles of actual CV distribution guarantee a meaningful three-way split relative to this dataset's actual behavior.
 
+
 | Class | CV Threshold | SKU Share                         |
 | ----- | ------------ | --------------------------------- |
 | X     | ≤ 3.96       | Bottom 25% (most stable)          |
 | Y     | 3.96–10.91   | Middle 50% (moderate variability) |
 | Z     | > 10.91      | Top 25% (most erratic)            |
 
+
 **Validated CV Distribution:**
+
 
 | Percentile | Coefficient of Variation |
 | ---------- | ------------------------ |
@@ -482,6 +535,7 @@ Standard thresholds (CV ≤ 0.5 = X, 0.5–1.0 = Y, > 1.0 = Z) assume moderate-t
 | 50th       | 7.81                     |
 | 75th       | 10.91                    |
 | 90th       | 17.95                    |
+
 
 **Dual Implementation: Measure and Calculated Column:**
 Both `ABC Tier` and `XYZ Classification` follow the same dual implementation pattern: a `DAX` measure for dynamic filter context in visuals and downstream DAX, and a calculated column in `DimProduct` for slicers and row-level grouping: 
@@ -496,11 +550,12 @@ Both `ABC Tier` and `XYZ Classification` follow the same dual implementation pat
 
 ---
 
-## Entry #18 — Core Measures
+### Entry #18: Core Measures
 
 **Date:** March 2026  
 
 **Layer:** `_Measures\Core Measures` (DAX measures)
+
 
 | Measure               | DAX Pattern                               | Note                                                              |
 | --------------------- | ----------------------------------------- | ----------------------------------------------------------------- |
@@ -511,7 +566,9 @@ Both `ABC Tier` and `XYZ Classification` follow the same dual implementation pat
 | `Avg Order Value`     | `DIVIDE([Total Revenue], [Total Orders])` | `DIVIDE` handles division by zero safely                          |
 | `Avg Profit Margin %` | `AVERAGE(FactOrders[Profit Ratio])`       | Raw 0–1 field, formatted as %                                     |
 
+
 **Validated Totals:**
+
 
 | Measure             | Value          |
 | ------------------- | -------------- |
@@ -522,13 +579,15 @@ Both `ABC Tier` and `XYZ Classification` follow the same dual implementation pat
 | Avg Order Value     | $559.45        |
 | Avg Profit Margin % | 12.06%         |
 
+
 ---
 
-## Entry #19 — Supply Performance Measures
+### Entry #19: Supply Performance Measures
 
 **Date:** March 2026  
 
 **Layer:** DAX measures — `_Measures\Supply Performance`
+
 
 | Measure                      | Format          | Validated Total |
 | ---------------------------- | --------------- | --------------- |
@@ -539,8 +598,10 @@ Both `ABC Tier` and `XYZ Classification` follow the same dual implementation pat
 | `Late Delivery Rate %`       | Percentage, 2dp | 57.3%           |
 | `On-Time Delivery Rate %`    | Percentage, 2dp | 42.7%           |
 
+
 **Canceled Order Exclusion:**
 All six measures filter `Delivery Status <> "Shipping canceled"`. Canceled orders never shipped so including them would distort lead time averages toward zero and inflate the on-time rate. `Delivery Status` chosen over `Order Status` because it captures shipping outcome specifically, not order processing status.
+
 
 | Status            | Row Count   |
 | ----------------- | ----------- |
@@ -549,6 +610,7 @@ All six measures filter `Delivery Status <> "Shipping canceled"`. Canceled order
 | Shipping on time  | 32,196      |
 | Shipping canceled | 7,754       |
 | **Total**         | **180,519** |
+
 
 Non-canceled orders used in calculations: 172,765.
 
@@ -563,7 +625,7 @@ Late delivery rate of 57.3% reflects actual `DataCo` source dataset characterist
 
 ---
 
-## Entry #20 — Inventory Planning: Safety Stock and Replenishment Design
+### Entry #20: Inventory Planning: Safety Stock and Replenishment Design
 
 **Date:** March 2026  
 
@@ -583,11 +645,13 @@ Chosen over simpler single-variance formulas because this dataset has both deman
 Higher Revenue Tier = Higher Opportunity Cost per Stockout = Higher Service Level Target
 ```
 
+
 | Tier | Service Level | Z Score |
 | ---- | ------------- | ------- |
 | A    | 95%           | 1.65    |
 | B    | 90%           | 1.28    |
 | C    | 85%           | 1.04    |
+
 
 **Safety Stock Grain Constraint:**
 `Safety Stock` references `[ABC Tier]` which uses `ISINSCOPE(DimProduct[Product Name])`. This propagates BLANK at category, department, and total grain through `Safety Stock` → `Reorder Point` → `Reorder Flag` → `Reorder Quantity`. This is intentional. Safety stock is a per-SKU parameter. A category-level aggregate would mislead warehouse operators into thinking a single buffer covers all SKUs in a category. All report pages using these measures must include `Product Name` as a row dimension.
@@ -612,11 +676,13 @@ Standard XYZ thresholds (CV ≤ 0.5 = X, 0.5–1.0 = Y, > 1.0 = Z) are designed 
 
 Thresholds set at 25th and 75th percentiles of actual CV distribution guarantees a meaningful three-way split relative to this catalog's behavior:
 
+
 | Class | CV Threshold                      | Interpretation                    | Replenishment                           |
 | ----- | --------------------------------- | --------------------------------- | --------------------------------------- |
 | X     | ≤ 3.96 (25th percentile)          | Stable, predictable - bottom 25%  | 60-day target - infrequent large orders |
 | Y     | 3.96–10.91 (25th–75th percentile) | Moderate variability - middle 50% | 45-day target - balanced replenishment  |
 | Z     | > 10.91 (75th percentile)         | Erratic, unpredictable - top 25%  | 30-day target - frequent small orders   |
+
 
 CV percentile distribution (validated): 25th = 3.96, 50th = 7.81, 75th = 10.91, 90th = 17.95.
 
@@ -628,7 +694,7 @@ CV percentile distribution (validated): 25th = 3.96, 50th = 7.81, 75th = 10.91, 
 
 ---
 
-## Entry #21 — Simulated Inventory: Testing Infrastructure
+### Entry #21: Simulated Inventory: Testing Infrastructure
 
 **Date:** March 2026  
 
@@ -646,7 +712,7 @@ In production, `Simulated Inventory Level` is replaced by a live WMS/ERP on-hand
 
 ---
 
-## Entry #22 — Cycle Count Schedule: ABC XYZ Combined Matrix
+### Entry #22: Cycle Count Schedule: ABC XYZ Combined Matrix
 
 **Date:** March 2026  
 
@@ -670,12 +736,15 @@ Thresholds were set at the 25th and 75th percentiles of this catalog's actual CV
 
 **ABC XYZ Cycle Count Matrix:**
 
+
 |                           | X (Stable, CV ≤ 3.96) | Y (Moderate, CV 3.96–10.91) | Z (Erratic, CV > 10.91) |
 | ------------------------- | --------------------- | --------------------------- | ----------------------- |
 | **A** (top 80% revenue)   | Monthly               | Monthly                     | **Weekly**              |
 | **B** (80–95% revenue)    | Quarterly             | Quarterly                   | Monthly                 |
 | **C** (bottom 5% revenue) | Semi-Annual           | Semi-Annual                 | Quarterly               |
 | **Inactive**              | Annual                | Annual                      | Annual                  |
+
+
 
 | Combination | Frequency   | Rationale                                                                                                    |
 | ----------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
@@ -687,12 +756,14 @@ Thresholds were set at the 25th and 75th percentiles of this catalog's actual CV
 | CX / CY     | Semi-Annual | Low revenue, stable demand - minimal discrepancy risk                                                        |
 | Inactive    | Annual      | Outside active classification scope - annual physical audit sufficient                                       |
 
+
 **Implementation:**  
 The DAX calculated column `Cycle Count Schedule` concatenates `ABC Tier (Classification)` and `XYZ Classification (DimColumn)` into a matrix key ("AX", "BZ", etc.) and uses `SWITCH` to return the frequency label. Updates automatically on model refresh when tier assignments change.
 
 ---
 
-## Limitation Log
+### Limitation Log
+
 
 | #   | Limitation                                                                          | Impact                                                                                                                      | Mitigation                                                                                                                                                                                                                                                                                                      |
 | --- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -703,11 +774,12 @@ The DAX calculated column `Cycle Count Schedule` concatenates `ABC Tier (Classif
 | 5   | Single flat file source. No supplier dimension                                      | Cannot segment lead time by supplier                                                                                        | Shipping Mode used as a substitute                                                                                                                                                                                                                                                                              |
 | 6   | Late delivery rate of 57.3% in source data                                          | Elevated rate may concern report consumers                                                                                  | Reflects actual DataCo dataset characteristics (not a measure error). Documented on QA page                                                                                                                                                                                                                     |
 | 7   | Continuous review replenishment model applied to predominantly slow-moving products | Suggested reorder quantities are too small to differentiate meaningfully between tiers for 81% of SKUs selling < 1 unit/day | Use as directional starting reference. Periodic review is the production-grade solution for slow movers. Target days (60/45/30) are industry standard starting points, not data-derived from cost structure. Full optimization requires actual holding cost and ordering cost per SKU. Documented in Entry #20. |
-| 8   | No Shipped Quantity column in source data | In Full component of OTIF cannot be independently measured | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace the right side of the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #28. |
+| 8   | No Shipped Quantity column in source data                                           | In Full component of OTIF cannot be independently measured                                                                  | Order Quantity used as proxy in OTIF % — assumes all orders shipped in full. In production: replace the right side of the In Full condition with `FactOrders[Shipped Quantity]`. No other formula changes needed. See Entry #28.                                                                                |
+
 
 ---
 
-## Entry #23 — Core Measures: Canceled Order Exclusion
+### Entry #23: Core Measures: Canceled Order Exclusion
 
 **Date:** April 2026
 **Layer:** DAX Layer — Core Measures folder (FactOrders)
@@ -753,14 +825,16 @@ KEEPFILTERS intersects the new condition with existing context rather than repla
 
 ### Validated Baselines (Post-Exclusion)
 
-| Measure | Value |
-|---|---|
-| Total Revenue | $35,214,428.98 |
-| Total Gross Profit | $3,806,420.63 |
-| Total Units Sold | 367,591 |
-| Total Orders | 62,897 |
-| Avg Order Value | $559.87 |
-| Avg Profit Margin % | 12.08% |
+
+| Measure             | Value          |
+| ------------------- | -------------- |
+| Total Revenue       | $35,214,428.98 |
+| Total Gross Profit  | $3,806,420.63  |
+| Total Units Sold    | 367,591        |
+| Total Orders        | 62,897         |
+| Avg Order Value     | $559.87        |
+| Avg Profit Margin % | 12.08%         |
+
 
 ### QA: Cross-Check Validation (Scaffolding Removed)
 
@@ -774,7 +848,7 @@ All three confirmed. The window logic and KEEPFILTERS cascade are working correc
 
 ---
 
-## Entry #24 — Supply Performance: Canceled Order Exclusion, FILTER Guard, Count-Based Rate Measures
+### Entry #24: Supply Performance: Canceled Order Exclusion, FILTER Guard, Count-Based Rate Measures
 
 **Date:** April 2026
 **Layer:** DAX Layer — Supply Performance folder (FactOrders)
@@ -824,18 +898,20 @@ KEEPFILTERS intersects the new filter with existing context rather than replacin
 
 ### Validated Baselines (Post-Entry #24, Unchanged)
 
-| Measure | Value |
-|---|---|
-| Late Delivery Rate % | 57.3% |
-| On-Time Delivery Rate % | 42.7% |
-| Avg Lead Time (Actual) | 3.50 days |
-| Avg Lead Time (Scheduled) | 2.93 days |
-| Avg Lead Time Variance | 0.57 days |
+
+| Measure                    | Value     |
+| -------------------------- | --------- |
+| Late Delivery Rate %       | 57.3%     |
+| On-Time Delivery Rate %    | 42.7%     |
+| Avg Lead Time (Actual)     | 3.50 days |
+| Avg Lead Time (Scheduled)  | 2.93 days |
+| Avg Lead Time Variance     | 0.57 days |
 | Lead Time Variance Std Dev | 1.49 days |
+
 
 ---
 
-## Entry #25 — Inventory Planning: Canceled Order Exclusion
+### Entry #25: Inventory Planning: Canceled Order Exclusion
 
 **Date:** April 2026
 **Layer:** DAX Layer — Inventory Planning folder (FactOrders)
@@ -884,7 +960,7 @@ Excluding canceled orders from `Avg Daily Demand by SKU` and `Demand Std Dev (Da
 
 ---
 
-## Entry #26 — Simulated Inventory Level Redesign
+### Entry #26: Simulated Inventory Level Redesign
 
 **Date:** April 2026
 **Layer:** DAX Layer — DimProduct Inventory Segmentation (calculated columns)
@@ -911,11 +987,13 @@ ROP-anchored levels mean the simulation is operationally grounded — each SKU's
 
 ### Validated Distribution (Post-Redesign)
 
-| Flag | Expected | Actual |
-|---|---|---|
-| 🚨 Stockout | ~12 (10%) | 11 (9.3%) |
+
+| Flag          | Expected  | Actual     |
+| ------------- | --------- | ---------- |
+| 🚨 Stockout   | ~12 (10%) | 11 (9.3%)  |
 | ⚠ Reorder Now | ~35 (30%) | 36 (30.5%) |
-| ✓ Stock OK | ~71 (60%) | 71 (60.2%) |
+| ✓ Stock OK    | ~71 (60%) | 71 (60.2%) |
+
 
 Small deviations from exact 10/30/60 are expected — 118 SKUs cannot distribute evenly across 10 buckets (118 ÷ 10 = 11.8). Each bucket receives either 11 or 12 SKUs. Distribution is correct.
 
@@ -929,7 +1007,7 @@ After applying canceled order exclusion in Entry #25, the tie resolved. Excludin
 
 ---
 
-## Entry #27 — XYZ Threshold Recalibration Post Canceled Order Exclusion
+### Entry #27: XYZ Threshold Recalibration Post Canceled Order Exclusion
 
 **Date:** April 2026
 **Layer:** DAX Layer — Inventory Segmentation (FactOrders measure + DimProduct column)
@@ -938,12 +1016,14 @@ After applying canceled order exclusion in Entry #25, the tie resolved. Excludin
 
 After applying canceled order exclusion in Entry #25, the CV distribution across all 118 SKUs shifted upward. Excluding canceled units reduced the demand totals used in `Avg Daily Demand by SKU` and `Demand Std Dev (Daily)`. With canceled units removed, the ratio of variability to mean demand increased for affected SKUs — demand became less predictable relative to its new lower baseline.
 
-| Percentile | Pre-Exclusion | Post-Exclusion | Delta |
-|---|---|---|---|
-| CV 25th (X/Y boundary) | 3.96 | 3.99 | +0.03 |
-| CV 50th | 7.81 | 8.30 | +0.49 |
-| CV 75th (Y/Z boundary) | 10.91 | 11.48 | +0.57 |
-| CV 90th | 17.95 | 18.67 | +0.72 |
+
+| Percentile             | Pre-Exclusion | Post-Exclusion | Delta |
+| ---------------------- | ------------- | -------------- | ----- |
+| CV 25th (X/Y boundary) | 3.96          | 3.99           | +0.03 |
+| CV 50th                | 7.81          | 8.30           | +0.49 |
+| CV 75th (Y/Z boundary) | 10.91         | 11.48          | +0.57 |
+| CV 90th                | 17.95         | 18.67          | +0.72 |
+
 
 ### Decision: Recalibrate Thresholds to Post-Exclusion CV Percentiles
 
@@ -957,17 +1037,19 @@ Applied to both `[XYZ Classification]` (FactOrders measure) and `DimProduct[XYZ 
 
 ### Finding: SKU Distribution Shifted — Six SKUs Moved from Y to Z
 
+
 | Class | Pre-Exclusion | Post-Exclusion |
-|---|---|---|
-| X | ~30 | 29 |
-| Y | ~59 | 54 |
-| Z | ~29 | 35 |
+| ----- | ------------- | -------------- |
+| X     | ~30           | 29             |
+| Y     | ~59           | 54             |
+| Z     | ~29           | 35             |
+
 
 Six SKUs shifted from Y to Z after recalibration. This is expected — excluding canceled orders exposed higher demand variability in those SKUs, and the recalibrated Y/Z boundary (11.48 vs 10.91) moved some borderline SKUs into Z. These SKUs will now receive shorter replenishment coverage (30 days vs 45 days in `Reorder Quantity`) and will be monitored more frequently per the cycle count matrix.
 
 ---
 
-## Entry #28 — OTIF %: Supply Performance Measure and QA Simulation Infrastructure
+### Entry #28: OTIF %: Supply Performance Measure and QA Simulation Infrastructure
 
 **Date:** April 2026
 **Layer:** DAX Layer — Supply Performance folder and _Validation folder (FactOrders), Fill Rate Parameter disconnected table
@@ -985,6 +1067,7 @@ In production: replace the right side of the In Full condition with `FactOrders[
 ### Decision: NonCanceledCount Guard and KEEPFILTERS — Same Pattern as Entry #24
 
 `OTIF %` follows the same canceled order exclusion pattern established in Entry #24:
+
 - NonCanceledCount FILTER guard returns BLANK in canceled-only context
 - KEEPFILTERS on all CALCULATE-based Delivery Status arguments preserves slicer responsiveness
 
@@ -996,12 +1079,164 @@ Both measures are QA scaffolding — `_Validation` folder only, remove before v1
 
 ---
 
-*Document Version: 3.0 — Phase 1 ETL + Phase 2 Model Layer + Phase 3 DAX Layer*
-*Phase 3 Entries #16–#22: QA pages, display folder naming, ABC XYZ segmentation, core measures, supply performance, inventory planning, simulation, cycle count schedule*
-*Phase 3 Entry #23: Core Measures canceled order exclusion — KEEPFILTERS pattern, validated 7,754 canceled rows / 16,488 units / 0 mixed-line orders*
-*Phase 3 Entry #24: Supply Performance canceled order exclusion — NonCanceledCount FILTER guard, KEEPFILTERS on all CALCULATE blocks, count-based rewrites for Late Delivery Rate % and On-Time Delivery Rate %, 1 - BLANK() fix*
-*Phase 3 Entry #25: Inventory Planning canceled order exclusion — KEEPFILTERS on Avg Daily Demand TotalUnits CALCULATE block, plain FILTER predicate condition on Demand Std Dev (Daily), deprecated references fixed in Coefficient of Variation, XYZ Classification (DimColumn), Cycle Count Schedule, SKU Count - Unclassified, cascade through all dependent measures confirmed*
-*Phase 3 Entry #26: Simulated Inventory Level redesign — three-state ROP-anchored design, SKU Revenue Rank (DimColumn) as MOD input, validated 11/36/71 distribution, rank tie resolved post Entry #25 exclusion*
-*Phase 3 Entry #27: XYZ threshold recalibration — thresholds updated from 3.96/10.91 to 3.99/11.48, CV distribution shift documented, SKU distribution change confirmed*
-*Phase 3 Entry #28: OTIF % added to Supply Performance — count-based formula, NonCanceledCount guard, KEEPFILTERS, In Full proxy per Limitation #8; Fill Rate Parameter and OTIF % (Simulated) added as QA scaffolding*
-*Next Update: Financial Impact measures*
+### Entry #29: Financial Performance: Simulated Inventory Exclusion, Cycle Stock Model, ADDCOLUMNS Pattern
+
+**Date:** April 2026
+**Layer:** DAX Layer — Financial Performance folder (FactOrders)
+
+### Finding: Simulated Inventory Level Produces Misleading Financial Ratios
+
+`DimProduct[Simulated Inventory Level]` was designed for one operational purpose: testing whether inventory is above or below the reorder trigger point. States are anchored to Reorder Point (ROP):
+
+- Stockout: 0 units
+- Reorder Now: `CEILING(ROP × 0.5, 1)` — 50% of ROP, below threshold
+- Stock OK: `CEILING(ROP × 1.5, 1)` — 150% of ROP, just above threshold
+
+This is a reorder-trigger simulation. For a low-velocity SKU with an ROP of 6 units, Stock OK = 9 units. When summed across 118 SKUs with predominantly low daily demand, total simulated inventory is approximately 600–1,250 units.
+
+To understand why this produces unrealistic financial ratios, it helps to walk through the math from validated dataset figures.
+
+**Avg unit cost:** Implied COGS is derived from the validated baselines: Total Revenue ($35,214,428.98) minus Total Gross Profit ($3,806,420.63) = $31,408,008.35. Dividing by Total Units Sold (367,591 units, also from validated baselines) gives $31,408,008 / 367,591 = **$85.45 avg cost per unit**.
+
+**Estimated inventory value:** 600–1,250 simulated units × $85.45 = approximately **$51K–$107K**.
+
+**Annualized COGS:** The dataset spans Jan 1, 2015 to Jan 31, 2018 — 1,126 calendar days. To express COGS as an annual rate: $31,408,008 × (365 / 1,126) = **~$10.2M/year**. This converts the full-dataset total to a daily rate ($31,408,008 / 1,126 days) then scales to 365 days.
+
+**Resulting ratios using simulated inventory:**
+
+- Inventory Turns: $10.2M / $80K ≈ 95–200×
+- DIO: 365 / 175 ≈ 2–4 days
+
+These values are arithmetically correct given their inputs but do not reflect realistic inventory economics. The COGS figure covers three years of sales. The inventory figure covers a snapshot near the reorder level threshold. The result is not a valid Inventory Turns figure — it does not reflect how quickly this operation actually moves inventory.
+
+### Decision: Restrict Simulated Inventory Level to Replenishment Decision Measures
+
+`DimProduct[Simulated Inventory Level]` is used exclusively in:
+
+- `[Reorder Flag]` — stockout / reorder now / stock ok status signal
+- `[Stock Coverage (Days)]` — simulated days of stock remaining
+- `[Revenue at Risk (Stockout)]` — stockout SKU detection only; exposure formula uses demand × lead time, not simulated level
+
+`Simulated Inventory Level` is intentionally excluded from: `[Carrying Cost Estimate]`, `[Inventory Turns]`, `[GMROI]`, `[DIO]`, `[SLOB Exposure]`.
+
+### Decision: Cycle Stock Model as Financial Inventory Baseline
+
+The APICS cycle stock model defines average on-hand inventory for a continuous review replenishment system as:
+
+**Average Inventory per SKU = Safety Stock + (Target Replenishment Days × Avg Daily Demand) / 2**
+
+**Why divide by 2:** Inventory depletes linearly across a replenishment cycle. At the start of a cycle, on-hand equals the full replenishment batch. At the end of the cycle, on-hand reaches zero before the next order arrives. The average level across the full cycle is halfway between full and empty — half the batch size. Safety Stock sits below this as a permanent buffer floor that does not deplete under normal conditions. Average on-hand = the floor that never moves (Safety Stock) plus the midpoint of the batch cycling through (half the replenishment batch).
+
+Both inputs — Safety Stock and Avg Daily Demand — are computed from the same trailing 12-month window used across all classification and planning measures. No simulated data.
+
+Target days by XYZ tier (mirrors replenishment cycle definitions in `[Reorder Quantity]`):
+
+- X: 60 days (stable demand, longer replenishment cycle)
+- Y: 45 days (moderate variability, balanced cycle)
+- Z: 30 days (erratic demand, short replenishment cycle)
+
+Source: APICS CPIM Body of Knowledge — cycle stock model, continuous review replenishment.
+
+### What Is and Is Not Estimated From Summary Statistics
+
+**Cycle stock component — can be estimated from validated dataset totals:**
+
+Total Units Sold (367,591 — from validated baselines) divided by dataset span (1,126 days — Jan 1, 2015 to Jan 31, 2018) gives total avg daily demand: 367,591 / 1,126 = **326.5 units/day** across all 118 SKUs.
+
+Weighted avg target days across the XYZ distribution (29X / 54Y / 35Z from validated baselines): (29×60 + 54×45 + 35×30) / 118 = **44.2 days**.
+
+Estimated total cycle stock units: (44.2 × 326.5) / 2 = **~7,215 units**. The division by 2 applies the same logic as above — average in-cycle inventory is half the replenishment batch.
+
+Estimated cycle stock value: 7,215 × $85.45 (avg unit cost derived above) = **~$616,500**.
+
+**Safety stock component — cannot be estimated from summary statistics:**
+
+The safety stock formula is `Z × SQRT((AvgLT × σ²_demand) + (AvgDemand² × σ²_LT))`. Dataset-wide values AvgLT (3.50 days) and σ_LT (1.49 days) are known from validated baselines. AvgDemand and σ_demand are per-SKU — computed from each SKU's individual order history in the trailing 12-month window by `[Avg Daily Demand by SKU]` and `[Demand Std Dev (Daily)]` respectively. These measures already exist in the model and compute the correct values at row level. They cannot be derived from dataset totals because the total tells nothing about how demand is distributed across individual SKUs — a catalog where one SKU sells 300 units/day and 117 sell almost nothing has the same total as one where all 118 sell equally, but safety stock requirements are completely different.
+
+**Conclusion:** The cycle stock estimate (~$616,500) is anchored to validated dataset figures. The safety stock component — the buffer floor each SKU holds to absorb demand and lead time variability — is computed per product inside the model by `[Safety Stock]`, `[Avg Daily Demand by SKU]`, and `[Demand Std Dev (Daily)]`. These measures already exist and are built. The total inventory value required for Carrying Cost Estimate, Inventory Turns, GMROI, DIO, and SLOB Exposure is only produced when the model iterates all 118 SKUs and sums the result. That sum is what the ADDCOLUMNS(SUMMARIZE()) pattern below delivers.
+
+### Decision: ADDCOLUMNS(SUMMARIZE()) Pattern for Per-SKU Safety Stock Iteration
+
+**Business context:** To compute Carrying Cost Estimate and the Executive KPI ratios, the model needs a total estimated inventory value — the sum of average on-hand inventory multiplied by unit cost across all 118 SKUs. Getting there requires calling `[Safety Stock]` and `[Avg Daily Demand by SKU]` for each individual product and summing the results. The technical challenge is that `[Safety Stock]` will not compute inside a standard iteration. This section explains why and how it is resolved.
+
+**What Product Name is and what "grouping" means:**
+
+`DimProduct[Product Name]` is a text column in DimProduct — a label that identifies each product. In a Power BI table visual with Product Name on rows, each row represents one product. Power BI groups all FactOrders data by that product before evaluating any measures on the row. That grouping is what `ISINSCOPE(DimProduct[Product Name])` detects — it answers: is Product Name currently acting as the axis that defines these rows?
+
+`[Safety Stock]` returns BLANK unless Product Name is the grouping axis — not because it carries its own guard, but because of an ISINSCOPE guard on its dependency `[ABC Tier]`. Safety Stock is a per-SKU metric and has no meaningful interpretation at a total or subtotal row where multiple products are combined.
+
+**Why ISINSCOPE is on ABC Tier, not Safety Stock directly:**
+
+The ISINSCOPE guard is not on `[Safety Stock]` itself. It is on `[ABC Tier]`, which Safety Stock depends on for its Z-score input. The dependency chain is:
+
+`[Safety Stock]` → `[ABC Tier]` → `ISINSCOPE(DimProduct[Product Name])`
+
+`[ABC Tier]` returns BLANK when ISINSCOPE is FALSE. When ABC Tier is BLANK, the Z-score lookup inside Safety Stock returns BLANK. When Z-score is BLANK, Safety Stock returns BLANK. The ISINSCOPE behavior propagates through the dependency chain automatically.
+
+`[ABC Tier]` carries the guard because it produces a meaningless result at total and subtotal rows. Without the guard, a visual showing Safety Stock at the total row would evaluate ABC Tier against the combined revenue of all products — the cumulative revenue % would be 100%, the tier assignment would be wrong, and the resulting Safety Stock figure would represent a fictional combined SKU rather than the sum of individual SKU values. The guard returns BLANK at those rows so the visual shows nothing rather than a misleading number. This design decision is documented in Entry #20.
+
+The ADDCOLUMNS(SUMMARIZE()) pattern is the cost of keeping the visual guards correct. Removing the ISINSCOPE guard from ABC Tier would allow plain SUMX to work, but every visual using Safety Stock, ABC Tier, Reorder Point, Reorder Flag, and Reorder Quantity would then show an incorrect value at the total row. That regression is not an acceptable trade for simplifying one measure.
+
+**Why plain SUMX fails:**
+
+```
+-- Intended: sum Safety Stock across all 118 products
+-- Actual result: BLANK for every row, sum = 0
+
+SUMX(
+    DimProduct,
+    CALCULATE([Safety Stock])   -- returns BLANK every time
+)
+```
+
+SUMX iterates over DimProduct rows one at a time. On each row it places a filter on Product Name — for example, "Product A" — but Product Name is not the grouping axis. It is just a row filter. ISINSCOPE cannot distinguish this from any other filter and returns FALSE. Safety Stock returns BLANK. The SUMX gets nothing for all 118 rows and produces 0.
+
+Concrete example with three products:
+
+
+| Iteration      | Product Name filter | ISINSCOPE result              | Safety Stock result |
+| -------------- | ------------------- | ----------------------------- | ------------------- |
+| Row 1          | = "Widget A"        | FALSE — filtered, not grouped | BLANK               |
+| Row 2          | = "Widget B"        | FALSE — filtered, not grouped | BLANK               |
+| Row 3          | = "Widget C"        | FALSE — filtered, not grouped | BLANK               |
+| **SUMX total** |                     |                               | **0**               |
+
+
+**Why ADDCOLUMNS(SUMMARIZE()) works:**
+
+```
+-- SUMMARIZE builds a grouped table: one row per distinct Product Name
+-- ADDCOLUMNS extends each row with computed columns
+-- ISINSCOPE fires correctly inside the extension columns
+
+SUMX(
+    ADDCOLUMNS(
+        SUMMARIZE(FactOrders, DimProduct[Product Name]),
+        "SS", [Safety Stock]     -- returns correct per-SKU value
+    ),
+    [SS]
+)
+```
+
+`SUMMARIZE(FactOrders, DimProduct[Product Name])` creates a new table where Product Name is the grouping axis — the same way a visual groups rows. Each row of this table represents one distinct product, and Product Name is what defines the rows. ISINSCOPE now returns TRUE. Safety Stock computes the correct value for each product.
+
+Same three products with ADDCOLUMNS(SUMMARIZE()):
+
+
+| Row            | Product Name (grouping axis) | ISINSCOPE result | Safety Stock result |
+| -------------- | ---------------------------- | ---------------- | ------------------- |
+| Row 1          | "Widget A"                   | TRUE — grouped   | 42 units            |
+| Row 2          | "Widget B"                   | TRUE — grouped   | 18 units            |
+| Row 3          | "Widget C"                   | TRUE — grouped   | 7 units             |
+| **SUMX total** |                              |                  | **67 units**        |
+
+
+`SELECTEDVALUE(DimProduct[XYZ Classification (DimColumn)])` also works correctly inside this pattern — each SUMMARIZE row has exactly one product in context, so SELECTEDVALUE returns the XYZ tier for that product without ambiguity.
+
+This pattern is applied to `[Carrying Cost Estimate]` in this folder and to `[Inventory Turns]`, `[GMROI]`, and `[SLOB Exposure]` in Executive KPIs.
+
+---
+
+*Document Version - 3.1: Phase 3 DAX Layer (Financial Performance)*  
+
+*Next Update: Executive KPIs measures*
