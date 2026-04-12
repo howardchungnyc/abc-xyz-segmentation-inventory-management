@@ -103,7 +103,7 @@ and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`).
 |---|---|---|
 | Phase 1 - ETL Data Preparation Layer | ✅ Complete | Developed on [`etl-layer`](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/tree/etl-layer). PBIX: [Phase 1 Release](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/releases/tag/phase-1-etl-data-preparation-layer). |
 | Phase 2 - Model Layer | ✅ Complete | Developed on [`model-layer`](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/tree/model-layer). PBIX: [Phase 2 Release](https://github.com/howardchungnyc/abc-xyz-segmentation-inventory-management/releases/tag/phase-2-model-layer). |
-| Phase 3 - DAX Measures Layer | 🔄 In Progress | Develop on `dax-layer` (branch for development only). When complete, PBIX published as GitHub Release. Measure/reference build: [`dax-measures.md`](./dax-measures.md). |
+| Phase 3 - DAX Measures Layer | 🔄 In Progress | Developed across feature branches merged to `main`: `dax-core-measures`, `dax-inventory-planning`, `dax-inventory-segmentation`, `dax-supply-performance`, `dax-inventory-financial-performance`. Remaining: `dax-executive-kpis`, `dax-trend-analysis`. PBIX published as GitHub Release on Phase 3 complete. Measure reference: [`dax-measures.md`](./dax-measures.md). |
 | Phase 4 - Page 1 Visuals | ⬜ Pending | Develop on `page-1-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
 | Phase 5 - Page 2 Visuals | ⬜ Pending | Develop on `page-2-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
 | Phase 6 - Page 3 Visuals | ⬜ Pending | Develop on `page-3-visuals` (branch for development only). When complete, PBIX published as GitHub Release. |
@@ -116,7 +116,7 @@ and three dimension tables (`DimProduct`, `DimCustomer`, `DimDate`).
 | File | Description |
 |---|---|
 | `README.md` | Project summary, report structure, download links, and business purpose |
-| [`decision-log.md`](./decision-log.md) | Architectural and analytical decisions with reasoning through **Phase 3 (DAX)**, Entries #1–#22 |
+| [`decision-log.md`](./decision-log.md) | Architectural and analytical decisions with reasoning through **Phase 3 (DAX)**, Entries #1–#29 |
 | [`dax-measures.md`](./dax-measures.md) | DAX measures reference: display-folder tree, measure/column DAX, build order, ABC·XYZ cycle count matrix (aligned with the model) |
 | [`abc-xyz-cycle-count-framework.html`](./abc-xyz-cycle-count-framework.html) | One-page web reference for the combined ABC/XYZ cycle count matrix (count schedule and three-lens narrative) |
 | `column-definition.md` | Complete data dictionary — source to model column mapping |
